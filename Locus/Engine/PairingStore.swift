@@ -110,7 +110,7 @@ final class PairingStore: ObservableObject {
         guard PairingFileValidator.isValid(data) else { return false }
         var handle: OpaquePointer?
         let error = data.withUnsafeBytes { bytes in
-            rp_pairing_file_from_bytes(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &handle)
+            rp_pairing_file_from_bytes(bytes.bindMemory(to: UInt8.self).baseAddress, UInt(bytes.count), &handle)
         }
         defer { if let handle { rp_pairing_file_free(handle) } }
         if let error {

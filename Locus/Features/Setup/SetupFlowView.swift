@@ -33,21 +33,24 @@ struct SetupFlowView: View {
 
     var body: some View {
         ZStack {
-            background
+            SetupBackground()
 
             VStack(spacing: 0) {
-                progressBar
+                SetupProgressView(step: step.rawValue + 1, total: Step.allCases.count)
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
 
                 Group {
                     switch step {
                     case .welcome:
-                        welcomePage
+                        SetupWelcomePage(appear: appear, supportsOnDevicePairing: supportsOnDevicePairing) {
+                            SetupGate.markInProgress()
+                            withAnimation { step = .pairing }
+                        }
                     case .pairing:
                         pairingPage
                     case .vpn:
-                        vpnPage
+                        SetupVPNPage(localDevVPNInstalled: localDevVPNInstalled, onFinished: onFinished)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -106,117 +109,6 @@ struct SetupFlowView: View {
         }
     }
 
-    // MARK: - Chrome
-
-    private var background: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            // Soft map-adjacent atmosphere (no flat fill).
-            RadialGradient(
-                colors: [
-                    LocusTheme.accent.opacity(0.22),
-                    Color.clear
-                ],
-                center: .topTrailing,
-                startRadius: 40,
-                endRadius: 420
-            )
-            .ignoresSafeArea()
-
-            RadialGradient(
-                colors: [
-                    Color(red: 0.12, green: 0.18, blue: 0.28).opacity(0.9),
-                    Color.clear
-                ],
-                center: .bottomLeading,
-                startRadius: 20,
-                endRadius: 380
-            )
-            .ignoresSafeArea()
-
-            // Subtle grid suggestion of a map without competing with copy.
-            GeometryReader { geo in
-                Path { path in
-                    let spacing: CGFloat = 44
-                    for x in stride(from: 0, through: geo.size.width, by: spacing) {
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: geo.size.height))
-                    }
-                    for y in stride(from: 0, through: geo.size.height, by: spacing) {
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: geo.size.width, y: y))
-                    }
-                }
-                .stroke(Color.white.opacity(0.04), lineWidth: 1)
-            }
-            .ignoresSafeArea()
-        }
-    }
-
-    private var progressBar: some View {
-        HStack(spacing: 8) {
-            ForEach(Step.allCases, id: \.rawValue) { s in
-                Capsule()
-                    .fill(s.rawValue <= step.rawValue ? LocusTheme.accent : Color.white.opacity(0.12))
-                    .frame(height: 3)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.format("Step %d of %d", step.rawValue + 1, Step.allCases.count))
-    }
-
-    // MARK: - Welcome
-
-    private var welcomePage: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 24)
-
-            VStack(spacing: 20) {
-                Image(systemName: "location.north.circle.fill")
-                    .font(.system(size: 64, weight: .light))
-                    .foregroundStyle(LocusTheme.accent)
-                    .symbolEffect(.pulse, options: .repeating.speed(0.4), isActive: appear)
-                    .opacity(appear ? 1 : 0)
-                    .scaleEffect(appear ? 1 : 0.85)
-
-                VStack(spacing: 10) {
-                    Text("Locus")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .tracking(-0.5)
-
-                    Text(supportsOnDevicePairing
-                         ? L10n.tr("Teleport your location.\nPair directly on this iPhone.")
-                         : L10n.tr("Teleport your location.\nImport a pairing file to get started."))
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .opacity(appear ? 1 : 0)
-                .offset(y: appear ? 0 : 12)
-            }
-            .padding(.horizontal, 28)
-
-            Spacer()
-
-            VStack(spacing: 14) {
-                Text(L10n.tr("A short setup — about two minutes."))
-                    .font(.subheadline)
-                    .foregroundStyle(.tertiary)
-
-                primaryButton(L10n.tr("Get started")) {
-                    SetupGate.markInProgress()
-                    withAnimation { step = .pairing }
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 28)
-            .opacity(appear ? 1 : 0)
-        }
-    }
-
     // MARK: - Pairing
 
     private var pairingPage: some View {
@@ -241,11 +133,11 @@ struct SetupFlowView: View {
                 }
                 .environmentObject(pairing)
             } else {
-                importPairingCard
+                SetupImportPairingCard()
                     .padding(.horizontal, 24)
                 Spacer()
                 VStack(spacing: 12) {
-                    primaryButton(L10n.tr("Import pairing file")) {
+                    SetupPrimaryButton(title: L10n.tr("Import pairing file")) {
                         showImporter = true
                     }
                     Button {
@@ -272,133 +164,6 @@ struct SetupFlowView: View {
         }
     }
 
-    private var importPairingCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            stepRow(1, L10n.tr("On your computer, run idevice_pair and create an RPPairing file."))
-            stepRow(2, L10n.tr("AirDrop / Share into Locus, or copy the plist text."))
-            stepRow(3, L10n.tr("Tap Import, or Paste from clipboard if the picker doesn’t work (LiveContainer)."))
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private func stepRow(_ n: Int, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(n)")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.black)
-                .frame(width: 22, height: 22)
-                .background(LocusTheme.accent, in: Circle())
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - LocalDevVPN
-
-    private var vpnPage: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 20)
-
-            VStack(spacing: 22) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundStyle(LocusTheme.accent)
-
-                VStack(spacing: 10) {
-                    Text(localDevVPNInstalled ? L10n.tr("Connect LocalDevVPN") : L10n.tr("One more app"))
-                        .font(.title.weight(.bold))
-
-                    Text(localDevVPNInstalled
-                         ? L10n.tr("LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here.")
-                         : L10n.tr("LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport."))
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    if localDevVPNInstalled {
-                        tipRow(systemImage: "checkmark.circle.fill", title: L10n.tr("Installed"), detail: L10n.tr("LocalDevVPN is on this iPhone."))
-                        tipRow(systemImage: "power.circle.fill", title: L10n.tr("Connect"), detail: L10n.tr("Tap below to open it and start the tunnel. You’ll bounce back to Locus."))
-                    } else {
-                        tipRow(systemImage: "arrow.down.app.fill", title: L10n.tr("Install"), detail: L10n.tr("Get LocalDevVPN from the App Store."))
-                        tipRow(systemImage: "power.circle.fill", title: L10n.tr("Connect"), detail: L10n.tr("Open it and turn the VPN on. Leave the default IP alone."))
-                    }
-                    tipRow(systemImage: "wifi", title: L10n.tr("First teleport on Wi‑Fi"), detail: L10n.tr("Start your first teleport while on Wi‑Fi. After that, it can keep working on cellular."))
-                }
-                .padding(18)
-                .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            VStack(spacing: 12) {
-                Button {
-                    if localDevVPNInstalled {
-                        LocalDevVPN.openInstalled()
-                    } else {
-                        LocalDevVPN.openAppStore()
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: localDevVPNInstalled ? "lock.shield.fill" : "apple.logo")
-                        Text(localDevVPNInstalled ? L10n.tr("Open LocalDevVPN") : L10n.tr("Get LocalDevVPN"))
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .foregroundStyle(.primary)
-                    .locusGlass(.interactive, in: Capsule())
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-
-                primaryButton(L10n.tr("I’ve connected it — continue")) {
-                    onFinished()
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 28)
-        }
-    }
-
-    private func tipRow(systemImage: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(LocusTheme.accent)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    // MARK: - Shared
-
-    private func primaryButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Capsule().fill(LocusTheme.accent))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Gate

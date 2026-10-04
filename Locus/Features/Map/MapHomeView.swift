@@ -168,131 +168,23 @@ struct MapHomeView: View {
         VStack(spacing: 10) {
             StatusBarView()
 
-            searchBar
+            MapSearchBar(searchText: $searchText, searchFocused: $searchFocused) { search.query = $0 }
 
             if !searchText.isEmpty && !search.results.isEmpty {
-                searchResults
+                MapSearchResults(items: search.results, onSelect: select)
             }
 
-            HStack(alignment: .center, spacing: 10) {
-                mapChromeButtons
-                Spacer(minLength: 0)
-                locateButton
-            }
+            MapToolbar(
+                drawMode: drawMode, hasPin: session.pin != nil,
+                onMapStyle: { session.mapStyleIndex = (session.mapStyleIndex + 1) % 3 },
+                onRoutes: { showRouteSheet = true },
+                onDraw: toggleDrawing, onFavorite: saveFavorite,
+                onLocate: { searchFocused = false; goToCurrentLocation() }
+            )
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
         .safeAreaPadding(.top, 8)
-    }
-
-    private var searchBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField(L10n.tr("Search places"), text: $searchText)
-                .textInputAutocapitalization(.words)
-                .focused($searchFocused)
-                .submitLabel(.search)
-                .onSubmit {
-                    searchFocused = false
-                }
-                .onChange(of: searchText) { _, value in
-                    search.query = value
-                }
-            if searchFocused || !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                    search.query = ""
-                    searchFocused = false
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.tr("Clear and dismiss keyboard"))
-            }
-            if searchFocused {
-                Button(L10n.tr("Done")) {
-                    searchFocused = false
-                }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.plain)
-                .foregroundStyle(LocusTheme.accent)
-            }
-        }
-        .padding(12)
-        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private var searchResults: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(search.results.prefix(5), id: \.self) { item in
-                Button {
-                    select(completion: item)
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                        if !item.subtitle.isEmpty {
-                            Text(item.subtitle).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                Divider().opacity(0.3)
-            }
-        }
-        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private var mapChromeButtons: some View {
-        HStack(spacing: 4) {
-            chromeIconButton("square.3.layers.3d") {
-                session.mapStyleIndex = (session.mapStyleIndex + 1) % 3
-            }
-            chromeIconButton("point.topleft.down.to.point.bottomright.curvepath") {
-                showRouteSheet = true
-            }
-            chromeIconButton(drawMode ? "pencil.tip.crop.circle.badge.minus" : "pencil.tip.crop.circle") {
-                drawMode.toggle()
-                if !drawMode { drawnPath.removeAll() }
-            }
-            .foregroundStyle(drawMode ? LocusTheme.accentSecondary : .primary)
-
-            if session.pin != nil {
-                chromeIconButton("star.circle") {
-                    if let pin = session.pin {
-                        let name = session.suggestedFavoriteName(for: pin, fallback: pinPlaceName)
-                        session.addFavorite(name: name, coordinate: pin)
-                    }
-                }
-            }
-        }
-        .padding(6)
-        .locusGlass(.clear, in: Capsule())
-        .contentShape(Capsule())
-    }
-
-    private var locateButton: some View {
-        Button {
-            searchFocused = false
-            goToCurrentLocation()
-        } label: {
-            Image(systemName: "location.fill")
-                .font(.body.weight(.semibold))
-                .frame(width: 48, height: 48)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .locusGlass(.interactive, in: Circle())
-        .foregroundStyle(.primary)
-        .contentShape(Circle())
-        .accessibilityLabel(L10n.tr("Current location"))
     }
 
     /// Centers on the spoofed fix while spoofing, otherwise the real GPS —
@@ -325,15 +217,14 @@ struct MapHomeView: View {
         }
     }
 
-    private func chromeIconButton(_ systemName: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.body.weight(.semibold))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.primary)
+    private func toggleDrawing() {
+        drawMode.toggle()
+        if !drawMode { drawnPath.removeAll() }
+    }
+
+    private func saveFavorite() {
+        guard let pin = session.pin else { return }
+        session.addFavorite(name: session.suggestedFavoriteName(for: pin, fallback: pinPlaceName), coordinate: pin)
     }
 
     private func select(completion: MKLocalSearchCompletion) {
@@ -438,31 +329,4 @@ struct MapHomeView: View {
 
 private extension UIWindowScene {
     var keyWindow: UIWindow? { windows.first { $0.isKeyWindow } }
-}
-
-@MainActor
-final class PlaceSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
-    @Published var results: [MKLocalSearchCompletion] = []
-    private let completer = MKLocalSearchCompleter()
-
-    var query: String = "" {
-        didSet {
-            completer.queryFragment = query
-        }
-    }
-
-    override init() {
-        super.init()
-        completer.delegate = self
-        completer.resultTypes = [.address, .pointOfInterest]
-    }
-
-    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        let items = completer.results
-        Task { @MainActor in self.results = items }
-    }
-
-    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        Task { @MainActor in self.results = [] }
-    }
 }

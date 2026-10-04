@@ -48,6 +48,7 @@ enum LocationEngine {
     private static var handshake: OpaquePointer?
     private static var remoteServer: OpaquePointer?
     private static var locationSimulation: OpaquePointer?
+    private static var lastApplied: (latitude: Double, longitude: Double, pairingPath: String, deviceIP: String)?
 
     private static let ok: Int32 = 0
     private static let invalidIP: Int32 = 1
@@ -58,6 +59,9 @@ enum LocationEngine {
     private static let locationSet: Int32 = 11
     private static let locationClear: Int32 = 12
 
+    // Submit on the caller's UI actor before suspending, so a later Stop cannot
+    // overtake a Set while its async function is hopping to another executor.
+    @MainActor
     static func set(latitude: Double, longitude: Double, pairingPath: String, deviceIP: String) async -> Result<Void, LocationEngineError> {
         guard latitude.isFinite, longitude.isFinite,
               (-90...90).contains(latitude), (-180...180).contains(longitude) else {
@@ -66,11 +70,13 @@ enum LocationEngine {
         return await withCheckedContinuation { continuation in
             queue.async {
                 let code = setLocked(latitude: latitude, longitude: longitude, pairingPath: pairingPath, deviceIP: deviceIP)
+                if code == ok { lastApplied = (latitude, longitude, pairingPath, deviceIP) }
                 continuation.resume(returning: code == ok ? .success(()) : .failure(.from(code: code)))
             }
         }
     }
 
+    @MainActor
     static func clear() async -> Result<Void, LocationEngineError> {
         await withCheckedContinuation { continuation in
             queue.async {
@@ -166,6 +172,13 @@ enum LocationEngine {
     }
 
     private static func clearLocked() -> Int32 {
+        // A broken transport does not prove locationd restored real GPS. Reconnect
+        // before clearing, and leave the failed-stop state retryable if it cannot.
+        if locationSimulation == nil, let lastApplied {
+            let code = setLocked(latitude: lastApplied.latitude, longitude: lastApplied.longitude,
+                                 pairingPath: lastApplied.pairingPath, deviceIP: lastApplied.deviceIP)
+            guard code == ok else { return code }
+        }
         guard let locationSimulation else { return ok }
         let err = location_simulation_clear(locationSimulation)
         cleanup()
@@ -173,6 +186,7 @@ enum LocationEngine {
             idevice_error_free(err)
             return locationClear
         }
+        lastApplied = nil
         return ok
     }
 }
