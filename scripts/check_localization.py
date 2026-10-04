@@ -40,7 +40,9 @@ def main():
         for key in ["CFBundleDisplayName", "NSLocalNetworkUsageDescription", "NSLocationWhenInUseUsageDescription", "NSLocationAlwaysAndWhenInUseUsageDescription"]:
             assert info.get(key), f"Missing {language} permission: {key}"
     with (resources / "Info.plist").open("rb") as handle:
-        plistlib.load(handle)
+        info = plistlib.load(handle)
+    gpx = next(item for item in info["UTImportedTypeDeclarations"] if item["UTTypeIdentifier"] == "com.topografix.gpx")
+    assert gpx["UTTypeTagSpecification"]["public.filename-extension"] == "gpx"
     print(f"PASS: {len(english)} translation pairs; {len(used)} referenced keys; localized permissions; Info.plist.")
 
 

@@ -3,7 +3,9 @@ name: Build Locus IPA
 on:
   push:
     branches: [main, 'codex/**']
-    tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'Locus.xcodeproj/**'
   pull_request:
   workflow_dispatch:
 
@@ -62,6 +64,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Upload generated Xcode project
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Locus-Xcode-project

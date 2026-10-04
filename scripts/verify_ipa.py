@@ -45,7 +45,8 @@ def verify(path):
         assert app + "LICENSE-idevice.txt" in names
         print(f"PASS: arm64 iPhoneOS, {info['CFBundleIdentifier']}, v{info['CFBundleShortVersionString']} ({info['CFBundleVersion']}), iOS {info['MinimumOSVersion']}+, bilingual resources and licenses.")
         print("Signing: " + ("provisioning profile present" if app + "embedded.mobileprovision" in names else "unsigned/re-sign with your installation tool"))
-    print("SHA-256: " + hashlib.file_digest(Path(path).open("rb"), "sha256").hexdigest())
+    with Path(path).open("rb") as handle:
+        print("SHA-256: " + hashlib.file_digest(handle, "sha256").hexdigest())
 
 
 if __name__ == "__main__":
