@@ -494,12 +494,6 @@
 					"-lc++",
 					"-lz",
 				);
-				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
-					"$(inherited)",
-					"-lidevice_ffi",
-					"-lc++",
-					"-lz",
-				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ghb997.location;
 				PRODUCT_NAME = Locus;
 				SDKROOT = iphoneos;
@@ -595,12 +589,6 @@
 				);
 				MARKETING_VERSION = 1.0.3;
 				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-lidevice_ffi",
-					"-lc++",
-					"-lz",
-				);
-				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
 					"$(inherited)",
 					"-lidevice_ffi",
 					"-lc++",
