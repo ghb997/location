@@ -8,3 +8,7 @@ Vendor/idevice-build/
 outputs/
 *.ipa
 Payload/
+.build/
+.swiftpm/
+*.log
+__pycache__/

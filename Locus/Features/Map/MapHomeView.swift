@@ -86,7 +86,7 @@ struct MapHomeView: View {
                         }
                     }
                     if let sim = session.simulated {
-                        Annotation("Spoof", coordinate: sim) {
+                        Annotation(L10n.tr("Spoof"), coordinate: sim) {
                             ZStack {
                                 Circle().fill(LocusTheme.accent.opacity(0.25)).frame(width: 44, height: 44)
                                 Circle().fill(LocusTheme.accent).frame(width: 14, height: 14)
@@ -118,17 +118,20 @@ struct MapHomeView: View {
         }
         .onAppear {
             session.startLocationUpdates()
+            importPendingGPX()
         }
         .onChange(of: session.pin?.latitude) { _, newValue in
             if newValue == nil { pinSelected = false }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .locusImportGPX)) { note in
-            guard let url = note.object as? URL else { return }
-            importGPX(url)
+        .onChange(of: session.pendingGPXURL) { _, _ in
+            importPendingGPX()
         }
         .fileImporter(isPresented: $showGPXImporter, allowedContentTypes: [.xml, .data], allowsMultipleSelection: false) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                importGPX(url)
+            switch result {
+            case .success(let urls):
+                if let url = urls.first { importGPX(url) }
+            case .failure(let error):
+                session.lastError = error.localizedDescription
             }
         }
         .sheet(isPresented: $showRouteSheet) {
@@ -186,7 +189,7 @@ struct MapHomeView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Search places", text: $searchText)
+            TextField(L10n.tr("Search places"), text: $searchText)
                 .textInputAutocapitalization(.words)
                 .focused($searchFocused)
                 .submitLabel(.search)
@@ -206,10 +209,10 @@ struct MapHomeView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Clear and dismiss keyboard")
+                .accessibilityLabel(L10n.tr("Clear and dismiss keyboard"))
             }
             if searchFocused {
-                Button("Done") {
+                Button(L10n.tr("Done")) {
                     searchFocused = false
                 }
                 .font(.subheadline.weight(.semibold))
@@ -289,7 +292,7 @@ struct MapHomeView: View {
         .locusGlass(.interactive, in: Circle())
         .foregroundStyle(.primary)
         .contentShape(Circle())
-        .accessibilityLabel("Current location")
+        .accessibilityLabel(L10n.tr("Current location"))
     }
 
     /// Centers on the spoofed fix while spoofing, otherwise the real GPS —
@@ -347,7 +350,6 @@ struct MapHomeView: View {
                     searchText = ""
                     search.query = ""
                     searchFocused = false
-                    session.addFavorite(name: title, coordinate: coord)
                     session.pushNamedRecent(name: title, coordinate: coord)
                 }
             }
@@ -357,7 +359,7 @@ struct MapHomeView: View {
     private func buildRoadRoute() {
         guard let start = routeStart ?? session.simulated ?? session.pin,
               let end = routeEnd else {
-            session.lastError = "Set a route start and end."
+            session.lastError = L10n.tr("Set a route start and end.")
             return
         }
         isRouting = true
@@ -380,7 +382,7 @@ struct MapHomeView: View {
     private func playRoute() {
         let path = routeCoords.isEmpty ? drawnPath : routeCoords
         guard path.count >= 2 else {
-            session.lastError = "Build or draw a route first."
+            session.lastError = L10n.tr("Build or draw a route first.")
             return
         }
         showRouteSheet = false
@@ -400,20 +402,33 @@ struct MapHomeView: View {
         }
     }
 
+    private func importPendingGPX() {
+        guard let url = session.pendingGPXURL else { return }
+        session.pendingGPXURL = nil
+        importGPX(url)
+    }
+
     private func exportGPX() {
         let path = routeCoords.isEmpty ? drawnPath : routeCoords
         guard !path.isEmpty else {
-            session.lastError = "Nothing to export."
+            session.lastError = L10n.tr("Nothing to export.")
             return
         }
         let gpx = GPXCodec.export(path)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Locus-Route.gpx")
         do {
-            try gpx.data(using: .utf8)?.write(to: url)
+            try Data(gpx.utf8).write(to: url, options: .atomic)
             let av = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
                let root = scene.keyWindow?.rootViewController {
-                root.present(av, animated: true)
+                var presenter = root
+                while let presented = presenter.presentedViewController { presenter = presented }
+                if let popover = av.popoverPresentationController {
+                    popover.sourceView = presenter.view
+                    popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+                    popover.permittedArrowDirections = []
+                }
+                presenter.present(av, animated: true)
             }
         } catch {
             session.lastError = error.localizedDescription

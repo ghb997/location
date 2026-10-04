@@ -2,6 +2,7 @@ import Foundation
 import idevice
 
 enum LocationEngineError: LocalizedError {
+    case invalidCoordinate
     case invalidIP
     case pairingRead
     case tunnelCreate
@@ -13,14 +14,15 @@ enum LocationEngineError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidIP: return "Tunnel IP is invalid. Check Settings → Tunnel IP (usually 10.7.0.1)."
-        case .pairingRead: return "Could not read the RPPairing file. Generate one with idevice_pair in RPPairing mode."
-        case .tunnelCreate: return "Could not open the developer tunnel. Is LocalDevVPN connected on Wi‑Fi?"
-        case .remoteServer: return "Connected to the tunnel but RemoteXPC handshake failed."
-        case .simulationCreate: return "Could not open Apple’s location simulation service."
-        case .locationSet: return "Failed to set simulated coordinates."
-        case .locationClear: return "Failed to clear simulated location."
-        case .notActive: return "No active simulation session."
+        case .invalidCoordinate: return L10n.tr("Coordinates must be finite, with latitude from −90 to 90 and longitude from −180 to 180.")
+        case .invalidIP: return L10n.tr("Tunnel IP is invalid. Check Settings → Tunnel IP (usually 10.7.0.1).")
+        case .pairingRead: return L10n.tr("Could not read the RPPairing file. Generate one with idevice_pair in RPPairing mode.")
+        case .tunnelCreate: return L10n.tr("Could not open the developer tunnel. Is LocalDevVPN connected on Wi‑Fi?")
+        case .remoteServer: return L10n.tr("Connected to the tunnel but RemoteXPC handshake failed.")
+        case .simulationCreate: return L10n.tr("Could not open Apple’s location simulation service.")
+        case .locationSet: return L10n.tr("Failed to set simulated coordinates.")
+        case .locationClear: return L10n.tr("Failed to clear simulated location.")
+        case .notActive: return L10n.tr("No active simulation session.")
         }
     }
 
@@ -56,24 +58,26 @@ enum LocationEngine {
     private static let locationSet: Int32 = 11
     private static let locationClear: Int32 = 12
 
-    static var isSessionActive: Bool { locationSimulation != nil }
-
-    static func set(latitude: Double, longitude: Double, pairingPath: String, deviceIP: String) -> Result<Void, LocationEngineError> {
-        var result: Result<Void, LocationEngineError> = .failure(.locationSet)
-        queue.sync {
-            let code = setLocked(latitude: latitude, longitude: longitude, pairingPath: pairingPath, deviceIP: deviceIP)
-            result = code == ok ? .success(()) : .failure(.from(code: code))
+    static func set(latitude: Double, longitude: Double, pairingPath: String, deviceIP: String) async -> Result<Void, LocationEngineError> {
+        guard latitude.isFinite, longitude.isFinite,
+              (-90...90).contains(latitude), (-180...180).contains(longitude) else {
+            return .failure(.invalidCoordinate)
         }
-        return result
+        return await withCheckedContinuation { continuation in
+            queue.async {
+                let code = setLocked(latitude: latitude, longitude: longitude, pairingPath: pairingPath, deviceIP: deviceIP)
+                continuation.resume(returning: code == ok ? .success(()) : .failure(.from(code: code)))
+            }
+        }
     }
 
-    static func clear() -> Result<Void, LocationEngineError> {
-        var result: Result<Void, LocationEngineError> = .failure(.notActive)
-        queue.sync {
-            let code = clearLocked()
-            result = code == ok ? .success(()) : .failure(.from(code: code))
+    static func clear() async -> Result<Void, LocationEngineError> {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                let code = clearLocked()
+                continuation.resume(returning: code == ok ? .success(()) : .failure(.from(code: code)))
+            }
         }
-        return result
     }
 
     private static func cleanup() {
@@ -162,7 +166,7 @@ enum LocationEngine {
     }
 
     private static func clearLocked() -> Int32 {
-        guard let locationSimulation else { return locationClear }
+        guard let locationSimulation else { return ok }
         let err = location_simulation_clear(locationSimulation)
         cleanup()
         if let err {

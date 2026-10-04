@@ -12,7 +12,20 @@ enum TunnelConfig {
         return stored
     }
 
-    static func setTargetIP(_ value: String) {
-        UserDefaults.standard.set(value, forKey: defaultsKey)
+    static func isValidIP(_ value: String) -> Bool {
+        let parts = value.split(separator: ".", omittingEmptySubsequences: false)
+        return parts.count == 4 && parts.allSatisfy {
+            !$0.isEmpty && $0.utf8.allSatisfy { (48...57).contains($0) }
+                && ($0.count == 1 || $0.first != "0") && UInt8($0) != nil
+        }
+    }
+
+    @discardableResult
+    static func setTargetIP(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.isEmpty ? defaultIP : trimmed
+        guard isValidIP(normalized) else { return false }
+        UserDefaults.standard.set(normalized, forKey: defaultsKey)
+        return true
     }
 }

@@ -41,13 +41,13 @@ struct LocusApp: App {
     private func handleIncoming(_ url: URL) {
         let ext = url.pathExtension.lowercased()
         if ["plist", "mobiledevicepairing", "mobiledevicepair"].contains(ext) {
-            try? pairing.importPairing(from: url)
+            do {
+                try pairing.importPairing(from: url)
+            } catch {
+                session.lastError = error.localizedDescription
+            }
         } else if ext == "gpx" {
-            NotificationCenter.default.post(name: .locusImportGPX, object: url)
+            session.pendingGPXURL = url
         }
     }
-}
-
-extension Notification.Name {
-    static let locusImportGPX = Notification.Name("locusImportGPX")
 }

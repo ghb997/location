@@ -1,6 +1,7 @@
 import Foundation
 import UniformTypeIdentifiers
 import UIKit
+import idevice
 
 @MainActor
 final class PairingStore: ObservableObject {
@@ -50,7 +51,9 @@ final class PairingStore: ObservableObject {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
         defer { if accessing { sourceURL.stopAccessingSecurityScopedResource() } }
 
-        let data = try Data(contentsOf: sourceURL)
+        let handle = try FileHandle(forReadingFrom: sourceURL)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: PairingFileValidator.maximumBytes + 1) ?? Data()
         try installPairingData(data)
     }
 
@@ -92,23 +95,29 @@ final class PairingStore: ObservableObject {
         }
 
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-        if FileManager.default.fileExists(atPath: pairingURL.path) {
-            try FileManager.default.removeItem(at: pairingURL)
-        }
-        try data.write(to: pairingURL, options: .atomic)
+        // Atomic replacement keeps the existing pairing intact if writing fails.
+        try data.write(to: pairingURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: pairingURL.path)
+        var privateURL = pairingURL
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try privateURL.setResourceValues(values)
         hasPairingFile = true
         lastError = nil
     }
 
     private func looksLikePairingPlist(_ data: Data) -> Bool {
-        if let obj = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) {
-            return obj is [AnyHashable: Any] || obj is [Any]
+        guard PairingFileValidator.isValid(data) else { return false }
+        var handle: OpaquePointer?
+        let error = data.withUnsafeBytes { bytes in
+            rp_pairing_file_from_bytes(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &handle)
         }
-        // XML plist often starts with these markers when copied as text.
-        guard let text = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
-        return text.hasPrefix("<?xml") || text.hasPrefix("bplist") || text.contains("<plist")
+        defer { if let handle { rp_pairing_file_free(handle) } }
+        if let error {
+            idevice_error_free(error)
+            return false
+        }
+        return handle != nil
     }
 }
 
@@ -119,9 +128,9 @@ enum PairingImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyClipboard:
-            return "Clipboard is empty. Copy your RPPairing plist text (or the file), then try Paste again."
+            return L10n.tr("Clipboard is empty. Copy your RPPairing plist text (or the file), then try Paste again.")
         case .invalidContents:
-            return "That doesn’t look like an RPPairing plist. Copy the full pairing file contents and try again."
+            return L10n.tr("That doesn’t look like an RPPairing plist. Copy the full pairing file contents and try again.")
         }
     }
 }

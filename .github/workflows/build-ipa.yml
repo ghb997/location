@@ -1,0 +1,75 @@
+name: Build Locus IPA
+
+on:
+  push:
+    branches: [main, 'codex/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XCODE_APP=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort -V | tail -n 1)
+          test -n "$XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+      - name: Validate translations and project resources
+        run: python3 scripts/check_localization.py
+      - name: Test GPX, coordinates and pairing validation
+        run: swift test
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build unsigned iPhone application
+        run: |
+          set -o pipefail
+          xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build 2>&1 | tee build.log
+      - name: Package and verify IPA
+        run: |
+          mkdir -p outputs/Payload
+          cp -R build/Build/Products/Release-iphoneos/Locus.app outputs/Payload/
+          cp LICENSE outputs/Payload/Locus.app/LICENSE-Locus.txt
+          cp Vendor/idevice/LICENSE outputs/Payload/Locus.app/LICENSE-idevice.txt
+          cd outputs
+          zip -qry Locus-1.0.3-zh-Hans-unsigned.ipa Payload
+          shasum -a 256 Locus-1.0.3-zh-Hans-unsigned.ipa > SHA256SUMS.txt
+          cd ..
+          python3 scripts/verify_ipa.py outputs/Locus-1.0.3-zh-Hans-unsigned.ipa
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Locus-zh-Hans-IPA
+          path: |
+            outputs/*.ipa
+            outputs/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload generated Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Locus-Xcode-project
+          path: Locus.xcodeproj
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore

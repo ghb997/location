@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "Locus 定位";
+"NSLocationWhenInUseUsageDescription" = "Locus 使用设备定位来显示当前位置，便于选择目标地点，并在结束模拟后查看真实位置。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Locus 需要后台定位权限来维持定位模拟连接。后台运行仍受 iOS 系统限制。";
+"NSLocalNetworkUsageDescription" = "Locus 通过本地网络连接 LocalDevVPN 开发者隧道，并在支持的系统上广播配对服务。";
