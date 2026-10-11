@@ -8,7 +8,7 @@ and neighboring map units were not selected.
 
 - Source: <https://github.com/nvkelso/natural-earth-vector/blob/v5.1.1/geojson/ne_10m_admin_0_map_units.geojson>
 - Original source Git blob: `003025bf947f0c083318dfdb86a69b8dd0678947`
-- Extracted JSON SHA-256: `12d48be1a20de89ad2ed0bb2068acbbf24d4f8967d305a68e5acdc7c73d99283`
+- Extracted JSON SHA-256 (LF line ending): `ec3fa27963f5e4481b6d68bdb9a132f48188dc5619df0a237dbdeac70009d2ec`
 - License: public domain; full source notice in `NaturalEarth-LICENSE.txt`.
 
 This is a geographic guard for an optional coordinate conversion, not a

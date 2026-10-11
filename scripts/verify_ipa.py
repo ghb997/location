@@ -58,7 +58,7 @@ def verify(path):
         assert not any(name.startswith(app + "_CodeSignature/") for name in names), "Unexpected app signature"
         coverage = [name for name in names if name in [app + "mainland-coverage.json", app + "CoordinateData/mainland-coverage.json"]]
         assert len(coverage) == 1, "Missing or ambiguous offline coordinate coverage"
-        assert hashlib.sha256(archive.read(coverage[0])).hexdigest() == "12d48be1a20de89ad2ed0bb2068acbbf24d4f8967d305a68e5acdc7c73d99283", "Offline coordinate coverage checksum mismatch"
+        assert hashlib.sha256(archive.read(coverage[0])).hexdigest() == "ec3fa27963f5e4481b6d68bdb9a132f48188dc5619df0a237dbdeac70009d2ec", "Offline coordinate coverage checksum mismatch"
         print(f"PASS: arm64 iPhoneOS, {info['CFBundleIdentifier']}, v{info['CFBundleShortVersionString']} ({info['CFBundleVersion']}), iOS {info['MinimumOSVersion']}+, bilingual resources and licenses.")
         print("Signing: " + ("provisioning profile present" if app + "embedded.mobileprovision" in names else "unsigned/re-sign with your installation tool"))
     with Path(path).open("rb") as handle:
