@@ -1,5 +1,7 @@
 # 代码检查与本次改进
 
+以下为 1.0.3 阶段的历史审查。本轮 1.1.0 的新增实现见 [变更说明](CHANGELOG.zh-CN.md)，自动化验证证据见 [构建记录](BUILD.zh-CN.md)，真机验证范围见 [兼容性记录](COMPATIBILITY.zh-CN.md)。
+
 基线：ChrisMack32/Locus `83c8fb324983728e8f44759cfd834dc637ee38b5`。
 
 | 发现的问题 | 本次处理 | 验证方式 |

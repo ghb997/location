@@ -4,6 +4,8 @@ import SwiftUI
 struct LocusApp: App {
     @StateObject private var session = SpoofSession()
     @StateObject private var pairing = PairingStore()
+    @StateObject private var pairOnDevice = PairOnDeviceService()
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(SetupGate.defaultsKey) private var setupComplete = false
 
     /// Map when setup finished, or when already paired outside this walkthrough.
@@ -25,11 +27,16 @@ struct LocusApp: App {
             }
             .environmentObject(session)
             .environmentObject(pairing)
+            .environmentObject(pairOnDevice)
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { session.handleForeground(pairing: pairing) }
+            }
             .preferredColorScheme(.dark)
             .onOpenURL { url in
                 handleIncoming(url)
             }
             .onAppear {
+                session.observePairingWorker(pairOnDevice)
                 if !setupComplete, pairing.hasPairingFile, !SetupGate.isInProgress {
                     SetupGate.markComplete()
                     setupComplete = true
@@ -41,7 +48,7 @@ struct LocusApp: App {
     private func handleIncoming(_ url: URL) {
         let ext = url.pathExtension.lowercased()
         if ["plist", "mobiledevicepairing", "mobiledevicepair"].contains(ext) {
-            guard !session.canStop else {
+            guard !session.canStop, !pairOnDevice.isWorkerRunning else {
                 session.lastError = L10n.tr("Stop the current simulation before changing pairing or tunnel settings.")
                 return
             }

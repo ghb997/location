@@ -30,8 +30,10 @@ jobs:
           xcodebuild -version
       - name: Validate translations and project resources
         run: python3 scripts/check_localization.py
-      - name: Test GPX, coordinates and pairing validation
-        run: swift test
+      - name: Test routes, coordinates, tunnel policy and pairing validation
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee core-tests.log
       - name: Generate Xcode project
         run: |
           brew install xcodegen
@@ -45,15 +47,8 @@ jobs:
             CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build 2>&1 | tee build.log
       - name: Package and verify IPA
         run: |
-          mkdir -p outputs/Payload
-          cp -R build/Build/Products/Release-iphoneos/Locus.app outputs/Payload/
-          cp LICENSE outputs/Payload/Locus.app/LICENSE-Locus.txt
-          cp Vendor/idevice/LICENSE outputs/Payload/Locus.app/LICENSE-idevice.txt
-          cd outputs
-          zip -qry Locus-1.0.3-zh-Hans-unsigned.ipa Payload
-          shasum -a 256 Locus-1.0.3-zh-Hans-unsigned.ipa > SHA256SUMS.txt
-          cd ..
-          python3 scripts/verify_ipa.py outputs/Locus-1.0.3-zh-Hans-unsigned.ipa
+          python3 scripts/package_ipa.py build/Build/Products/Release-iphoneos/Locus.app outputs
+          python3 scripts/verify_ipa.py outputs/*.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
@@ -74,5 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: build.log
+          path: |
+            build.log
+            core-tests.log
           if-no-files-found: ignore

@@ -4,8 +4,16 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @EnvironmentObject private var pairing: PairingStore
     @EnvironmentObject private var session: SpoofSession
+    @EnvironmentObject private var host: PairOnDeviceService
     @Environment(\.dismiss) private var dismiss
 
+    @ObservedObject private var diagnostics = TunnelDiagnostics.shared
+    @AppStorage(TunnelConfig.automaticPortKey) private var automaticPort = true
+    @AppStorage(CoordinateSettings.mapKey) private var mapSystem = "wgs84"
+    @AppStorage(CoordinateSettings.serviceKey) private var serviceSystem = "wgs84"
+    @AppStorage(SilentAudioKeepAlive.preferenceKey) private var pairingAudio = false
+    @State private var portText = String(TunnelConfig.port)
+    @State private var showCoordinates = false
     @State private var showImporter = false
     @State private var showPairOnDevice = false
     @State private var showNameEasterEgg = false
@@ -36,6 +44,9 @@ struct SettingsView: View {
                     }
 
                     if supportsOnDevicePairing {
+                        Toggle(L10n.tr("Keep pairing active with silent audio"), isOn: $pairingAudio)
+                        Text(L10n.tr("Optional: play silent audio only while pairing in Settings. It stops when pairing finishes or is cancelled."))
+                            .font(.footnote).foregroundStyle(.secondary)
                         Button {
                             showPairOnDevice = true
                         } label: {
@@ -64,7 +75,7 @@ struct SettingsView: View {
                          ? L10n.tr("On iOS 27, use Pair on this iPhone — no computer. Locus advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on Locus, or use Paste / Share → LiveContainer → Locus.")
                          : L10n.tr("Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste."))
                 }
-                .disabled(session.canStop)
+                .disabled(session.canStop || host.isWorkerRunning)
 
                 Section {
                     TextField(L10n.tr("Device tunnel IP"), text: $tunnelIP)
@@ -73,9 +84,13 @@ struct SettingsView: View {
                         .onSubmit {
                             saveTunnelIP()
                         }
-                    LabeledContent(L10n.tr("Status")) {
-                        Text(LocalDevVPN.isConnected ? L10n.tr("Connected") : L10n.tr("Not connected"))
-                            .foregroundStyle(LocalDevVPN.isConnected ? LocusTheme.statusGood : LocusTheme.statusWarn)
+                    Toggle(L10n.tr("Discover service port automatically"), isOn: $automaticPort)
+                    if !automaticPort {
+                        TextField(L10n.tr("Service port (1–65535)"), text: $portText).keyboardType(.numberPad)
+                    }
+                    LabeledContent(L10n.tr("VPN interface hint")) {
+                        Text(LocalDevVPN.isConnected ? L10n.tr("Interface detected") : L10n.tr("No matching interface detected"))
+                            .foregroundStyle(.secondary)
                     }
                     Button(L10n.tr("Save tunnel IP")) {
                         saveTunnelIP()
@@ -95,14 +110,70 @@ struct SettingsView: View {
                 } header: {
                     Text(L10n.tr("Tunnel"))
                 } footer: {
-                    Text(L10n.tr("Connect LocalDevVPN before teleporting. Default tunnel IP is 10.7.0.1. Start a spoof on Wi‑Fi first; it can keep working on cellular afterward."))
+                    Text(L10n.tr("Use the device endpoint configured by your loopback VPN, usually 10.7.0.1. A detected VPN interface does not prove the developer service is reachable."))
                 }
-                .disabled(session.canStop)
+                .disabled(session.canStop || host.isWorkerRunning)
 
                 if session.canStop {
                     Text(L10n.tr("Stop the current simulation before changing pairing or tunnel settings."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                }
+
+                Section(L10n.tr("Connection diagnostics")) {
+                    LabeledContent(L10n.tr("Status"), value: diagnostics.statusLabel)
+                    if let message = diagnostics.message {
+                        Text(message).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Button(L10n.tr("Check service connection")) {
+                        Task { await diagnostics.check() }
+                    }.disabled(session.isBusy || host.isWorkerRunning || diagnostics.isDraining || diagnostics.state == .checking)
+                    ShareLink(item: diagnostics.summaryForExport()) {
+                        Label(L10n.tr("Share redacted diagnostics"), systemImage: "square.and.arrow.up")
+                    }
+                    if session.restorationRequired {
+                        Button(L10n.tr("Retry restoring system location")) { session.stop(pairing: pairing) }
+                            .disabled(!session.canRetryRestore)
+                    }
+                    Text(L10n.tr("Connection checks do not change your position. Shared diagnostics exclude pairing secrets, PINs and exact coordinates."))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+
+                Section(L10n.tr("Coordinates")) {
+                    Button(L10n.tr("Enter coordinates…")) { showCoordinates = true }
+                    Picker(L10n.tr("Map coordinate compatibility"), selection: $mapSystem) {
+                        ForEach(CoordinateSystem.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                    }
+                    .onChange(of: mapSystem) { old, value in
+                        if value == CoordinateSystem.gcj02.rawValue, !validateCoverage() { mapSystem = old }
+                    }
+                    Picker(L10n.tr("Search and road service compatibility"), selection: $serviceSystem) {
+                        ForEach(CoordinateSystem.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                    }
+                    .onChange(of: serviceSystem) { old, value in
+                        if value == CoordinateSystem.gcj02.rawValue, !validateCoverage() { serviceSystem = old }
+                    }
+                    Text(L10n.tr("Keep WGS-84 unless a reproducible mainland offset requires GCJ-02 compatibility. Map and service settings are independent; saved coordinates are never rewritten."))
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+
+                Section(L10n.tr("Background and system location")) {
+                    Toggle(L10n.tr("Keep simulation active in background"), isOn: $session.backgroundEnabled)
+                    Text(L10n.tr("Background operation needs additional location permission and may still be suspended by iOS. Denying it does not prevent foreground use."))
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if let fix = session.simulationStartFix {
+                        locationFixRow(L10n.tr("Location before simulation"), fix: fix)
+                    }
+                    if let fix = session.latestFix {
+                        locationFixRow(L10n.tr("Latest system location"), fix: fix)
+                        Text(fix.isSimulated ? L10n.tr("System reports a simulated fix") : L10n.tr("Latest system fix; GPS restoration needs device verification"))
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    if let fix = session.restoredFix {
+                        locationFixRow(L10n.tr("Fresh system location after stopping"), fix: fix)
+                    }
+                    if let issue = session.locationIssue { Text(issue).font(.footnote).foregroundStyle(.secondary) }
+                    Button(L10n.tr("Refresh system location")) { session.requestLatestLocation() }
                 }
 
                 Section(L10n.tr("Privacy")) {
@@ -141,6 +212,13 @@ struct SettingsView: View {
                     Button(L10n.tr("Done")) {
                         if session.canStop || saveTunnelIP() { dismiss() }
                     }
+                }
+            }
+            .sheet(isPresented: $showCoordinates) {
+                CoordinateEntrySheet { coordinate in
+                    session.pin = coordinate
+                    session.pinSource = .manual
+                    dismiss()
                 }
             }
             .sheet(isPresented: $showImporter) {
@@ -184,7 +262,27 @@ struct SettingsView: View {
     }
 
     @discardableResult
+    private func validateCoverage() -> Bool {
+        do {
+            _ = try OfflineMainlandCoverage.contains(.init(latitude: 39.9, longitude: 116.4))
+            return true
+        } catch { session.lastError = error.localizedDescription; return false }
+    }
+
+    private func locationFixRow(_ title: String, fix: SystemLocationFix) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            LabeledContent(title) { Text(fix.timestamp, style: .relative).font(.caption) }
+            Text(L10n.format("Accuracy: ±%.0f m", fix.horizontalAccuracy))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    @discardableResult
     private func saveTunnelIP() -> Bool {
+        guard automaticPort || TunnelConfig.setPort(portText) else {
+            session.lastError = L10n.tr("Enter a service port from 1 to 65535.")
+            return false
+        }
         guard TunnelConfig.setTargetIP(tunnelIP) else {
             session.lastError = LocationEngineError.invalidIP.localizedDescription
             return false

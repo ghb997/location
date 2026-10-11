@@ -10,14 +10,26 @@ Locus 使用 Apple 开发者定位模拟服务修改系统报告的位置，支�
 - [中文安装指南](SETUP.md)
 - [自动构建记录与临时下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
+- [1.1.0 变更说明](docs/CHANGELOG.zh-CN.md)
+- [兼容性与真机验收记录](docs/COMPATIBILITY.zh-CN.md)
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
 
-发布的 `Locus-1.0.3-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
+发布的 `Locus-1.1.0-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
 
-中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及 LocalDevVPN**。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
+中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及可达的回环开发者隧道**。推荐使用 LocalDevVPN；其他工具以实际连通检查为准。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
 
-## 此版本的改进
+## 1.1.0 新增完善
+
+- 自动发现服务端口、实际连通诊断、超时等待提示和停止恢复重试。
+- 路线进度、暂停／继续、断线后冻结；GPX 保留轨迹和分段，下一段显式切换。
+- 模拟期间可应用新目标；搜索、导入和道路生成采用过期结果保护。
+- 显式 WGS-84／GCJ-02 输入及独立地图、服务兼容设置，默认关闭修正。
+- 旧收藏保留数值并备份，支持逐项修正和撤回；后台权限与系统定位状态更加明确。
+
+完整行为与验收范围见上方变更说明及兼容性记录。
+
+## 已有改进
 
 - 完整覆盖界面、首次设置、权限提示、通知、错误和无障碍标签的简体中文资源。
 - 定位服务通过串行后台队列异步调用，连接期间界面仍可响应；停止会排在已发出的定位请求之后执行，并忽略过期结果。
@@ -55,7 +67,7 @@ xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
 ```bash
 python3 scripts/check_localization.py
 swift test
-python3 scripts/verify_ipa.py /path/to/Locus-1.0.3-zh-Hans-unsigned.ipa
+python3 scripts/verify_ipa.py /path/to/Locus-1.1.0-zh-Hans-unsigned.ipa
 ```
 
 `swift test` 在 macOS 上运行 GPX、坐标和配对格式的回归测试，不依赖真机 FFI。完整 iOS 编译由 Actions 验证。编译和静态检查不能替代真机上的定位、恢复真实 GPS、后台运行和各签名工具兼容性测试。

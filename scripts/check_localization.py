@@ -8,7 +8,10 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 ENTRY = re.compile(r'("(?:[^"\\]|\\.)*")\s*=\s*("(?:[^"\\]|\\.)*")\s*;')
 CALL = re.compile(r'L10n\.(?:tr|format)\(("(?:[^"\\]|\\.)*")')
-FORMAT = re.compile(r'%(?:\d+\$)?(?:@|d|ld|lld|u|f|s)')
+FORMAT = re.compile(
+    r'%(?:\d+\$)?[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*))?'
+    r'(?:hh|h|ll|l|z|t|j|L)?(?:@|[diuoxXfFeEgGcs])'
+)
 
 
 def strings(path):

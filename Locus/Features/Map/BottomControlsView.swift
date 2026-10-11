@@ -40,6 +40,7 @@ struct BottomControlsView: View {
                 Spacer(minLength: 0)
             }
 
+            if session.currentRoute != nil { RoutePlaybackControls() }
             HStack(spacing: 10) {
                 trayIcon("gearshape.fill") { showSettings = true }
                     .accessibilityLabel(L10n.tr("Settings"))
@@ -68,42 +69,31 @@ struct BottomControlsView: View {
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .disabled(session.isBusy)
-
+                .disabled(!session.canWrite)
+            }
+            HStack(spacing: 10) {
+                Button {
+                    if let pin = session.pin { session.teleport(to: pin, pairing: pairing) }
+                } label: {
+                    Text(L10n.tr("Go to pin"))
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12).padding(.horizontal, 10)
+                        .background(Capsule().fill(LocusTheme.accent))
+                }
+                .buttonStyle(.plain)
+                .disabled(!session.canWrite || session.pin == nil)
                 if session.canStop {
-                    Button {
-                        session.stop(pairing: pairing)
-                    } label: {
+                    Button { session.stop(pairing: pairing) } label: {
                         Text(L10n.tr("Stop"))
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(minWidth: 72)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 8)
+                            .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12).padding(.horizontal, 10)
                             .background(Capsule().fill(LocusTheme.danger))
-                            .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(session.status == .stopping)
-                } else {
-                    Button {
-                        guard let pin = session.pin else {
-                            session.lastError = L10n.tr("Tap the map to drop a pin first.")
-                            return
-                        }
-                        session.teleport(to: pin, pairing: pairing)
-                    } label: {
-                        Text(L10n.tr("Teleport"))
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.black)
-                            .frame(minWidth: 96)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 10)
-                            .background(Capsule().fill(LocusTheme.accent))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(session.isBusy)
+                    .disabled(!session.canRetryRestore)
                 }
             }
         }
