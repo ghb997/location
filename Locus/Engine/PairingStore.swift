@@ -4,7 +4,7 @@ import UIKit
 import idevice
 
 @MainActor
-final class PairingStore: ObservableObject {
+final class PairingStore: ObservableObject, PairingProviding {
     @Published private(set) var hasPairingFile = false
     @Published var lastError: String?
 

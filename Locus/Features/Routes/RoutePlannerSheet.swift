@@ -13,6 +13,8 @@ struct RoutePlannerSheet: View {
     var onSelectTrack: (UUID) -> Void
     var onBuild: () -> Void
     var onPlay: () -> Void
+    var onPreviewDraft: () -> Void
+    var onShowCurrentRoute: () -> Void
     var onImportGPX: () -> Void
     var onExportGPX: () -> Void
     var onUseDrawn: () -> Void
@@ -20,7 +22,7 @@ struct RoutePlannerSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(L10n.tr("Route playback")) {
+                Section(L10n.tr("Selected route")) {
                     if let track = session.draftTrack {
                         Text(track.name).font(.headline)
                         if tracks.count > 1 {
@@ -40,13 +42,28 @@ struct RoutePlannerSheet: View {
                         LabeledContent(L10n.tr("Distance"), value: distanceText(track))
                         Text(L10n.tr("Segments are separate. Moving to the next segment requires confirmation."))
                             .font(.footnote).foregroundStyle(.secondary)
+                        Button(L10n.tr("Preview selected route")) {
+                            onPreviewDraft()
+                            dismiss()
+                        }
                         Button(L10n.tr("Start selected route"), action: onPlay)
                             .disabled(!session.canWrite)
                     } else {
                         Text(L10n.tr("Build, draw or import a route first."))
                             .foregroundStyle(.secondary)
                     }
-                    if session.currentRoute != nil { RoutePlaybackControls() }
+                }
+                if let current = session.currentRoute {
+                    Section(L10n.tr("Current route")) {
+                        Text(current.name).font(.headline)
+                        Text(L10n.tr("Previewing another route keeps this route and its progress."))
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Button(L10n.tr("Show current route")) {
+                            onShowCurrentRoute()
+                            dismiss()
+                        }
+                        RoutePlaybackControls()
+                    }
                 }
                 Section(L10n.tr("Road route")) {
                     Button(L10n.tr("Use current pin / spoof as start")) { start = session.simulated ?? session.pin }

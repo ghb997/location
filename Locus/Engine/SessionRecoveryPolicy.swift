@@ -1,7 +1,9 @@
 import Foundation
 
 struct RestorationRecord: Codable, Equatable, Sendable {
-    var point: RoutePoint
+    // Clear-only recovery can repair a corrupt record without inventing a
+    // coordinate. Older records containing a point decode unchanged.
+    var point: RoutePoint?
     var pairingPath: String
     var deviceIP: String
 }
@@ -36,7 +38,7 @@ final class RestorationRecordStore {
     func clear() { defaults.removeObject(forKey: key) }
 
     private static func isValid(_ value: RestorationRecord) -> Bool {
-        RouteGeometry.isValid(value.point.coordinate) && TunnelConfig.isValidIP(value.deviceIP)
+        (value.point.map { RouteGeometry.isValid($0.coordinate) } ?? true) && TunnelConfig.isValidIP(value.deviceIP)
             && !value.pairingPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

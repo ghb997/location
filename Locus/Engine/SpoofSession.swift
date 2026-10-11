@@ -3,7 +3,10 @@ import Foundation
 import Combine
 import Network
 import MapKit
+import CoreGraphics
+#if canImport(UIKit)
 import UIKit
+#endif
 import UserNotifications
 
 enum TravelMode: String, CaseIterable, Identifiable {
@@ -88,14 +91,16 @@ final class SpoofSession: ObservableObject {
     @Published private(set) var currentRoute: RouteTrack?
     @Published private(set) var routePlayback = RoutePlaybackSnapshot()
     @Published private(set) var restorationRequired = false
+    @Published private(set) var isRepairingRecovery = false
+    private var recoveryRepairRequiresStop = false
     @Published private(set) var latestFix: SystemLocationFix?
     @Published private(set) var simulationStartFix: SystemLocationFix?
     @Published private(set) var restoredFix: SystemLocationFix?
     @Published private(set) var locationAuthorization: CLAuthorizationStatus = .notDetermined
     @Published private(set) var locationIssue: String?
-    @Published var backgroundEnabled = UserDefaults.standard.bool(forKey: "locus.backgroundEnabled") {
+    @Published var backgroundEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(backgroundEnabled, forKey: "locus.backgroundEnabled")
+            runtime.preferences.set(backgroundEnabled, forKey: "locus.backgroundEnabled")
             locationKeeper.setBackgroundEnabled(backgroundEnabled)
             if !backgroundEnabled { endBackground() }
         }
@@ -103,7 +108,7 @@ final class SpoofSession: ObservableObject {
     @Published var favorites: [SavedPlace] = []
     @Published var recents: [SavedPlace] = []
 
-    private var resendTimer: Timer?
+    private var resendTask: Task<Void, Never>?
     private var operationEpoch = SessionOperationEpoch()
     private var generation: Int { operationEpoch.value }
     private var isStopping = false
@@ -115,20 +120,23 @@ final class SpoofSession: ObservableObject {
     private var pendingPauseReason: RoutePauseReason = .user
     private var retryTask: Task<Void, Never>?
     private var retryEpoch = SessionOperationEpoch()
+    #if canImport(UIKit)
     private var backgroundTask = UIBackgroundTaskIdentifier.invalid
+    #endif
     private var joystickVector: CGVector = .zero
     private var lastJoystickTick = 0.0
-    private let locationKeeper = BackgroundKeepAlive()
+    private let runtime: SessionRuntime
+    private let locationKeeper: any LocationKeeping
     private let clock: PlaybackClock
     private let transport: any LocationTransport
     private let restorationStore: RestorationRecordStore
     private let pathMonitor = NWPathMonitor()
     private var networkValidationTask: Task<Void, Never>?
     private var lastNetworkSignature: String?
-    private weak var activePairing: PairingStore?
+    private weak var activePairing: (any PairingProviding)?
     private var diagnosticsSubscription: AnyCancellable?
     private var pairingWorkerSubscription: AnyCancellable?
-    private weak var pairingHost: PairOnDeviceService?
+    private var pairingWorkerRunning: () -> Bool = { false }
     private var lastNotifiedDropReason: String?
     private var restoreContext: RestorationRecord?
     private var confirmedStopAt: Date?
@@ -136,12 +144,16 @@ final class SpoofSession: ObservableObject {
     private let favoritesKey = "locus.favorites"
     private let recentsKey = "locus.recents"
     init(clock: PlaybackClock = PlaybackClock(), restorationStore: RestorationRecordStore = RestorationRecordStore(),
-         transport: (any LocationTransport)? = nil) {
+         transport: (any LocationTransport)? = nil, runtime: SessionRuntime? = nil) {
+        let runtime = runtime ?? SessionRuntime.live()
+        self.runtime = runtime
+        self.locationKeeper = runtime.locationKeeper
+        self.backgroundEnabled = runtime.preferences.bool(forKey: "locus.backgroundEnabled")
         self.clock = clock
-        self.transport = transport ?? NativeLocationTransport()
+        self.transport = transport ?? SessionRuntime.nativeTransport()
         self.restorationStore = restorationStore
-        favorites = SavedPlace.load(key: favoritesKey)
-        recents = SavedPlace.load(key: recentsKey)
+        favorites = SavedPlace.load(key: favoritesKey, defaults: runtime.preferences)
+        recents = SavedPlace.load(key: recentsKey, defaults: runtime.preferences)
         if let context = restorationStore.record {
             restoreContext = context
             restorationRequired = true
@@ -161,19 +173,23 @@ final class SpoofSession: ObservableObject {
         locationKeeper.onAuthorization = { [weak self] in self?.locationAuthorization = $0 }
         locationKeeper.onIssue = { [weak self] in self?.locationIssue = $0 }
         locationKeeper.setBackgroundEnabled(backgroundEnabled)
+        #if canImport(UIKit)
         diagnosticsSubscription = TunnelDiagnostics.shared.$isDraining.sink { [weak self] _ in self?.objectWillChange.send() }
+        #endif
         pathMonitor.pathUpdateHandler = { [weak self] path in
             let interfaces = path.availableInterfaces.map(\.name).sorted().joined(separator: ",")
             let signature = "\(path.status)|\(interfaces)|\(path.isExpensive)"
             let available = path.status == .satisfied
             Task { @MainActor in self?.networkPathChanged(signature: signature, available: available) }
         }
-        pathMonitor.start(queue: DispatchQueue(label: "com.ghb997.location.path"))
+        if runtime.monitorsNetwork {
+            pathMonitor.start(queue: DispatchQueue(label: "com.ghb997.location.path"))
+        }
     }
 
     deinit {
         pathMonitor.cancel()
-        resendTimer?.invalidate()
+        resendTask?.cancel()
         joystickTimer?.invalidate()
         routeTask?.cancel()
         routePreparationTask?.cancel()
@@ -185,8 +201,11 @@ final class SpoofSession: ObservableObject {
     var pausedReason: RoutePauseReason? { routePlayback.pauseReason }
     var routeProgress: Double { routePlayback.progress }
     var routeSegmentIndex: Int { routePlayback.segmentIndex }
-    var canWrite: Bool { !isBusy && !isStopping && !transport.isDraining && pairingHost?.isWorkerRunning != true }
-    var canRetryRestore: Bool { !isStopping && !transport.isStopPending && pairingHost?.isWorkerRunning != true }
+    var canWrite: Bool { !isBusy && !isStopping && !transport.isDraining && !transport.isStopPending
+        && !pairingWorkerRunning() && !isRepairingRecovery && !recoveryRepairRequiresStop }
+    var canRetryRestore: Bool { !isStopping && !transport.isStopPending && !pairingWorkerRunning() && !isRepairingRecovery }
+    var canRepairRecovery: Bool { status.isDropped && restorationRequired && !isBusy && !isStopping
+        && !transport.isDraining && !transport.isStopPending && !pairingWorkerRunning() && !isRepairingRecovery }
     var isSpoofing: Bool { status == .active || status == .reconnecting }
     var canStop: Bool { restorationRequired || simulated != nil || isBusy || status.isDropped }
     var systemCoordinate: CLLocationCoordinate2D? {
@@ -199,18 +218,68 @@ final class SpoofSession: ObservableObject {
     func startLocationUpdates() { locationKeeper.start() }
     func requestLatestLocation() { locationKeeper.requestFreshSystemFix() }
 
+    @discardableResult
+    func beginRecoveryRepair() -> Bool {
+        guard canRepairRecovery else { return false }
+        cancelMovement(resetRoute: false)
+        stopResend()
+        transport.cancelPendingPreparation()
+        recoveryRepairRequiresStop = true
+        isRepairingRecovery = true
+        return true
+    }
+
+    @discardableResult
+    func updateRecoveryConfiguration(targetIP: String, pairing: any PairingProviding) -> Bool {
+        guard isRepairingRecovery, restorationRequired, !isBusy, !isStopping,
+              !transport.isDraining, !transport.isStopPending, !pairingWorkerRunning() else { return false }
+        guard TunnelConfig.isValidIP(targetIP) else {
+            lastError = LocationEngineError.invalidIP.localizedDescription
+            return false
+        }
+        guard pairing.hasPairingFile else {
+            lastError = LocationEngineError.pairingRead.localizedDescription
+            return false
+        }
+        guard transport.invalidateConnectionForRecovery() else {
+            lastError = LocationEngineError.operationBusy.localizedDescription
+            return false
+        }
+        let context = RestorationRecord(point: restoreContext?.point ?? simulated.map(RoutePoint.init),
+                                        pairingPath: pairing.pairingPath, deviceIP: targetIP)
+        guard restorationStore.save(context) else {
+            lastError = L10n.tr("Could not preserve the restoration record. Check the pairing file and tunnel IP before starting.")
+            return false
+        }
+        restoreContext = context
+        activePairing = pairing
+        lastError = nil
+        return true
+    }
+
+    func endRecoveryRepair() {
+        guard isRepairingRecovery else { return }
+        isRepairingRecovery = false
+        status = .dropped(L10n.tr("Restore the previous simulation before starting a new location."))
+        // A repaired endpoint only authorizes clear. Foreground/network events
+        // must not write old coordinates while the user is preparing recovery.
+    }
+
+    #if canImport(UIKit)
     func observePairingWorker(_ host: PairOnDeviceService) {
-        pairingHost = host
+        pairingWorkerRunning = { [weak host] in host?.isWorkerRunning == true }
         pairingWorkerSubscription = host.$isWorkerRunning.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
-    func handleForeground(pairing: PairingStore? = nil) {
+    #endif
+
+    func handleForeground(pairing: (any PairingProviding)? = nil) {
         if let pairing { activePairing = pairing }
         if canStop { validateConnection() }
         else { locationKeeper.requestFreshSystemFix() }
     }
 
-    func teleport(to coordinate: CLLocationCoordinate2D, pairing: PairingStore) {
+    func teleport(to coordinate: CLLocationCoordinate2D, pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing) else { return }
         guard RouteGeometry.isValid(coordinate) else {
             lastError = LocationEngineError.invalidCoordinate.localizedDescription
@@ -237,9 +306,9 @@ final class SpoofSession: ObservableObject {
         }
     }
 
-    func stop(pairing: PairingStore) {
-        guard !isStopping else { return }
-        guard pairingHost?.isWorkerRunning != true else {
+    func stop(pairing: any PairingProviding) {
+        guard !isStopping, !isRepairingRecovery else { return }
+        guard !pairingWorkerRunning() else {
             lastError = L10n.tr("Wait for the native pairing listener to finish before changing the simulation.")
             return
         }
@@ -256,7 +325,7 @@ final class SpoofSession: ObservableObject {
             // The UI remains stopping until the native write and queued clear really finish.
             let result = await transport.clear(
                 pairingPath: needsRecovery ? (pairing.hasPairingFile ? pairing.pairingPath : restoreContext?.pairingPath) : nil,
-                deviceIP: needsRecovery ? (restoreContext?.deviceIP ?? TunnelConfig.targetIP) : nil
+                deviceIP: needsRecovery ? (restoreContext?.deviceIP ?? runtime.targetIP()) : nil
             )
             isBusy = false
             isStopping = false
@@ -280,7 +349,7 @@ final class SpoofSession: ObservableObject {
         }
     }
 
-    private func canStart(pairing: PairingStore) -> Bool {
+    private func canStart(pairing: any PairingProviding) -> Bool {
         if restorationRequired && simulated == nil {
             lastError = L10n.tr("Restore the previous simulation before starting a new location.")
             return false
@@ -311,7 +380,7 @@ final class SpoofSession: ObservableObject {
         }
     }
 
-    func startJoystick(pairing: PairingStore) {
+    func startJoystick(pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing) else { return }
         guard let start = simulated ?? pin ?? systemCoordinate else {
             lastError = L10n.tr("Drop a pin or teleport somewhere before using the joystick.")
@@ -345,11 +414,11 @@ final class SpoofSession: ObservableObject {
         joystickTimer = nil
     }
 
-    func followRoute(_ coordinates: [CLLocationCoordinate2D], pairing: PairingStore) {
+    func followRoute(_ coordinates: [CLLocationCoordinate2D], pairing: any PairingProviding) {
         followRoute(RouteTrack(coordinates: coordinates), pairing: pairing)
     }
 
-    func followRoute(_ track: RouteTrack, pairing: PairingStore) {
+    func followRoute(_ track: RouteTrack, pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing) else { return }
         guard track.segments.contains(where: { $0.points.count >= 2 }) else {
             lastError = L10n.tr("Build or draw a route first.")
@@ -420,7 +489,7 @@ final class SpoofSession: ObservableObject {
         }
     }
 
-    func resumeRoute(pairing: PairingStore) {
+    func resumeRoute(pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing), routeTask == nil,
               routeCore?.snapshot.status == .paused else { return }
         activePairing = pairing
@@ -428,7 +497,7 @@ final class SpoofSession: ObservableObject {
         launchRoute(pairing: pairing, token: generation, rollback: nil, markRecent: false)
     }
 
-    func nextRouteSegment(pairing: PairingStore) {
+    func nextRouteSegment(pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing), routeTask == nil,
               var core = routeCore, core.snapshot.status == .awaitingNextSegment else { return }
         let previous = core
@@ -441,7 +510,7 @@ final class SpoofSession: ObservableObject {
         launchRoute(pairing: pairing, token: generation, rollback: previous, markRecent: false)
     }
 
-    func reconnect(pairing: PairingStore) {
+    func reconnect(pairing: any PairingProviding) {
         guard canWrite, let coordinate = simulated else { return }
         activePairing = pairing
         cancelRetries()
@@ -449,7 +518,7 @@ final class SpoofSession: ObservableObject {
         Task { await apply(coordinate, pairing: pairing, markRecent: false, token: token) }
     }
 
-    private func launchRoute(pairing: PairingStore, token: Int, rollback: RoutePlaybackCore?, markRecent: Bool) {
+    private func launchRoute(pairing: any PairingProviding, token: Int, rollback: RoutePlaybackCore?, markRecent: Bool) {
         pendingPauseReason = .user
         routeTask = Task { [weak self] in
             guard let self else { return }
@@ -514,8 +583,8 @@ final class SpoofSession: ObservableObject {
         routePlayback = routeCore?.snapshot ?? RoutePlaybackSnapshot()
     }
 
-    private func markRestoreNeeded(_ coordinate: CLLocationCoordinate2D, pairing: PairingStore) -> Bool {
-        let context = RestorationRecord(point: RoutePoint(coordinate), pairingPath: pairing.pairingPath, deviceIP: TunnelConfig.targetIP)
+    private func markRestoreNeeded(_ coordinate: CLLocationCoordinate2D, pairing: any PairingProviding) -> Bool {
+        let context = RestorationRecord(point: RoutePoint(coordinate), pairingPath: pairing.pairingPath, deviceIP: runtime.targetIP())
         guard restorationStore.save(context) else {
             lastError = L10n.tr("Could not preserve the restoration record. Check the pairing file and tunnel IP before starting.")
             return false
@@ -528,6 +597,7 @@ final class SpoofSession: ObservableObject {
     private func clearRestoreMarker() {
         restoreContext = nil
         restorationRequired = false
+        recoveryRepairRequiresStop = false
         restorationStore.clear()
     }
 
@@ -552,7 +622,7 @@ final class SpoofSession: ObservableObject {
         }
         favorites.removeAll { $0.coordinateKey == place.coordinateKey }
         favorites.insert(place, at: 0)
-        SavedPlace.save(favorites, key: favoritesKey)
+        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
     }
 
     func renameFavorite(_ place: SavedPlace, to name: String) {
@@ -560,17 +630,17 @@ final class SpoofSession: ObservableObject {
         guard !trimmed.isEmpty,
               let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         favorites[index].name = trimmed
-        SavedPlace.save(favorites, key: favoritesKey)
+        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
     }
 
     func removeFavorite(_ place: SavedPlace) {
         favorites.removeAll { $0.id == place.id }
-        SavedPlace.save(favorites, key: favoritesKey)
+        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
     }
 
     func removeRecent(_ place: SavedPlace) {
         recents.removeAll { $0.id == place.id }
-        SavedPlace.save(recents, key: recentsKey)
+        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
     }
 
     /// Best display name for starring the current pin (search title, matching recent, etc.).
@@ -608,7 +678,7 @@ final class SpoofSession: ObservableObject {
     }
 
     @discardableResult
-    private func apply(_ coordinate: CLLocationCoordinate2D, pairing: PairingStore, markRecent: Bool, token: Int, allowRetry: Bool = true) async -> Bool {
+    private func apply(_ coordinate: CLLocationCoordinate2D, pairing: any PairingProviding, markRecent: Bool, token: Int, allowRetry: Bool = true) async -> Bool {
         guard !Task.isCancelled, operationEpoch.accepts(token), canWrite else { return false }
         let startFix = simulated == nil && latestFix?.isSimulated == false ? latestFix : nil
         let previousStatus = status
@@ -622,7 +692,7 @@ final class SpoofSession: ObservableObject {
             return false
         }
         let result = await transport.set(latitude: coordinate.latitude, longitude: coordinate.longitude,
-                                              pairingPath: pairing.pairingPath, deviceIP: TunnelConfig.targetIP)
+                                              pairingPath: pairing.pairingPath, deviceIP: runtime.targetIP())
         guard operationEpoch.accepts(token), !isStopping else { return false }
         isBusy = false
         switch result {
@@ -659,7 +729,7 @@ final class SpoofSession: ObservableObject {
         }
     }
 
-    private func tickJoystick(pairing: PairingStore, token: Int) async {
+    private func tickJoystick(pairing: any PairingProviding, token: Int) async {
         guard joystickActive, canWrite, let current = simulated else { return }
         let now = clock.now
         let elapsed = now - lastJoystickTick
@@ -678,19 +748,23 @@ final class SpoofSession: ObservableObject {
         await apply(next, pairing: pairing, markRecent: false, token: token)
     }
 
-    private func startResend(pairing: PairingStore) {
-        guard resendTimer == nil else { return }
-        resendTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, self.canWrite, self.routeTask == nil, self.retryTask == nil,
-                      let simulated = self.simulated else { return }
-                await self.apply(simulated, pairing: pairing, markRecent: false, token: self.generation)
+    private func startResend(pairing: any PairingProviding) {
+        guard resendTask == nil else { return }
+        let clock = clock
+        resendTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await clock.sleep(until: clock.now + 8) } catch { return }
+                guard let self else { return }
+                guard canWrite, routeTask == nil, retryTask == nil,
+                      let simulated else { continue }
+                await apply(simulated, pairing: pairing, markRecent: false, token: generation)
             }
         }
     }
 
-    private func scheduleRetries(pairing: PairingStore, token: Int) {
-        guard retryTask == nil, simulated != nil, !isStopping else { return }
+    private func scheduleRetries(pairing: any PairingProviding, token: Int) {
+        guard retryTask == nil, simulated != nil, !isStopping,
+              !isRepairingRecovery, !recoveryRepairRequiresStop else { return }
         let runToken = retryEpoch.invalidate()
         retryTask = Task { [weak self] in
             guard let self else { return }
@@ -706,7 +780,7 @@ final class SpoofSession: ObservableObject {
                 guard canWrite else { continue }
                 if await apply(coordinate, pairing: pairing, markRecent: false, token: token, allowRetry: false) { return }
             }
-            guard operationEpoch.accepts(token) else { return }
+            guard retryEpoch.accepts(runToken), operationEpoch.accepts(token) else { return }
             stopResend()
         }
     }
@@ -718,17 +792,17 @@ final class SpoofSession: ObservableObject {
     }
 
     private func stopResend() {
-        resendTimer?.invalidate()
-        resendTimer = nil
+        resendTask?.cancel()
+        resendTask = nil
         cancelRetries()
         networkValidationTask?.cancel()
         networkValidationTask = nil
     }
 
-    private func networkPathChanged(signature: String, available: Bool) {
+    func networkPathChanged(signature: String, available: Bool) {
         guard lastNetworkSignature != signature else { return }
         lastNetworkSignature = signature
-        guard simulated != nil, !isStopping else { return }
+        guard simulated != nil, !isStopping, !isRepairingRecovery, !recoveryRepairRequiresStop else { return }
         if !available, routeState == .playing { pauseRoute(reason: .transportInterrupted) }
         networkValidationTask?.cancel()
         networkValidationTask = Task { [weak self] in
@@ -746,7 +820,7 @@ final class SpoofSession: ObservableObject {
         Task {
             guard operationEpoch.accepts(token), canWrite, routeTask == nil else { return }
             isBusy = true
-            let result = await transport.validateConnection(pairingPath: pairing.pairingPath, deviceIP: TunnelConfig.targetIP)
+            let result = await transport.validateConnection(pairingPath: pairing.pairingPath, deviceIP: runtime.targetIP())
             guard operationEpoch.accepts(token), !isStopping else { return }
             isBusy = false
             if case .failure(let error) = result {
@@ -756,9 +830,15 @@ final class SpoofSession: ObservableObject {
                 stopJoystick()
                 postDropNotification(error.localizedDescription)
                 scheduleRetries(pairing: pairing, token: token)
+            } else if status.isDropped {
+                // Reachability alone cannot confirm the native session. A new
+                // bounded attempt writes the last acknowledged coordinate;
+                // apply then restores active state and the heartbeat. Routes
+                // remain paused until an explicit user resume.
+                scheduleRetries(pairing: pairing, token: token)
+            } else if status == .active {
+                startResend(pairing: pairing)
             }
-            // Reachable confirms the service endpoint, not the DVT socket or GPS.
-            // A normal heartbeat/route write checks the native session next.
         }
     }
 
@@ -774,43 +854,44 @@ final class SpoofSession: ObservableObject {
         recents.removeAll { abs($0.latitude - place.latitude) < 0.00015 && abs($0.longitude - place.longitude) < 0.00015 }
         recents.insert(place, at: 0)
         if recents.count > 20 { recents = Array(recents.prefix(20)) }
-        SavedPlace.save(recents, key: recentsKey)
+        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
     }
 
     func correctFavoriteFromGCJ02(_ place: SavedPlace) {
         guard let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         do {
             favorites[index] = try favorites[index].correctedFromGCJ02()
-            SavedPlace.save(favorites, key: favoritesKey)
+            SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
         } catch { lastError = error.localizedDescription }
     }
 
     func restoreFavoriteOriginalCoordinate(_ place: SavedPlace) {
         guard let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         favorites[index] = favorites[index].restoringOriginalCoordinate()
-        SavedPlace.save(favorites, key: favoritesKey)
+        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
     }
 
     func correctRecentFromGCJ02(_ place: SavedPlace) {
         guard let index = recents.firstIndex(where: { $0.id == place.id }) else { return }
         do {
             recents[index] = try recents[index].correctedFromGCJ02()
-            SavedPlace.save(recents, key: recentsKey)
+            SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
         } catch { lastError = error.localizedDescription }
     }
 
     func restoreRecentOriginalCoordinate(_ place: SavedPlace) {
         guard let index = recents.firstIndex(where: { $0.id == place.id }) else { return }
         recents[index] = recents[index].restoringOriginalCoordinate()
-        SavedPlace.save(recents, key: recentsKey)
+        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
     }
 
     func reloadPlaces() {
-        favorites = SavedPlace.load(key: favoritesKey)
-        recents = SavedPlace.load(key: recentsKey)
+        favorites = SavedPlace.load(key: favoritesKey, defaults: runtime.preferences)
+        recents = SavedPlace.load(key: recentsKey, defaults: runtime.preferences)
     }
 
     private func beginBackground() {
+        #if canImport(UIKit)
         guard backgroundTask == .invalid else { return }
         backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
             Task { @MainActor in
@@ -819,16 +900,19 @@ final class SpoofSession: ObservableObject {
                 self?.endBackground()
             }
         }
+        #endif
     }
 
     private func endBackground() {
+        #if canImport(UIKit)
         guard backgroundTask != .invalid else { return }
         UIApplication.shared.endBackgroundTask(backgroundTask)
         backgroundTask = .invalid
+        #endif
     }
 
     private func postDropNotification(_ message: String) {
-        guard lastNotifiedDropReason != message else { return }
+        guard runtime.sendsNotifications, lastNotifiedDropReason != message else { return }
         lastNotifiedDropReason = message
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }

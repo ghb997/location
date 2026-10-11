@@ -32,9 +32,31 @@ struct SettingsView: View {
         return build.isEmpty ? short : "\(short) (\(build))"
     }
 
+    private var canEditConnection: Bool {
+        !host.isWorkerRunning && !session.isBusy && !diagnostics.isDraining
+            && (!session.canStop || session.isRepairingRecovery)
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                if session.restorationRequired {
+                    Section(L10n.tr("Repair restoration connection")) {
+                        Text(L10n.tr("If the pairing file or tunnel endpoint has changed, repair the connection here, then clear the previous simulation. New simulations remain blocked until restoration succeeds."))
+                            .font(.footnote).foregroundStyle(.secondary)
+                        if session.isRepairingRecovery {
+                            Button(L10n.tr("Save connection and restore location")) {
+                                guard saveTunnelIP() else { return }
+                                session.endRecoveryRepair()
+                                session.stop(pairing: pairing)
+                            }.disabled(!canEditConnection)
+                        } else {
+                            Button(L10n.tr("Repair connection settings")) {
+                                _ = session.beginRecoveryRepair()
+                            }.disabled(!session.canRepairRecovery)
+                        }
+                    }
+                }
                 Section {
                     Label {
                         Text(pairing.hasPairingFile ? L10n.tr("RPPairing file installed") : L10n.tr("No pairing file"))
@@ -58,6 +80,7 @@ struct SettingsView: View {
                     Button(L10n.tr("Paste RPPairing from clipboard")) {
                         do {
                             try pairing.importPairingFromClipboard()
+                            if session.isRepairingRecovery { _ = saveTunnelIP() }
                         } catch {
                             session.lastError = error.localizedDescription
                         }
@@ -67,6 +90,7 @@ struct SettingsView: View {
                             do { try pairing.removePairing() }
                             catch { session.lastError = error.localizedDescription }
                         }
+                        .disabled(session.isRepairingRecovery)
                     }
                 } header: {
                     Text(L10n.tr("Developer pairing"))
@@ -75,7 +99,7 @@ struct SettingsView: View {
                          ? L10n.tr("On iOS 27, use Pair on this iPhone — no computer. Locus advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on Locus, or use Paste / Share → LiveContainer → Locus.")
                          : L10n.tr("Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste."))
                 }
-                .disabled(session.canStop || host.isWorkerRunning)
+                .disabled(!canEditConnection)
 
                 Section {
                     TextField(L10n.tr("Device tunnel IP"), text: $tunnelIP)
@@ -112,9 +136,9 @@ struct SettingsView: View {
                 } footer: {
                     Text(L10n.tr("Use the device endpoint configured by your loopback VPN, usually 10.7.0.1. A detected VPN interface does not prove the developer service is reachable."))
                 }
-                .disabled(session.canStop || host.isWorkerRunning)
+                .disabled(!canEditConnection)
 
-                if session.canStop {
+                if session.canStop && !session.isRepairingRecovery {
                     Text(L10n.tr("Stop the current simulation before changing pairing or tunnel settings."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -132,8 +156,14 @@ struct SettingsView: View {
                         Label(L10n.tr("Share redacted diagnostics"), systemImage: "square.and.arrow.up")
                     }
                     if session.restorationRequired {
-                        Button(L10n.tr("Retry restoring system location")) { session.stop(pairing: pairing) }
-                            .disabled(!session.canRetryRestore)
+                        Button(L10n.tr("Retry restoring system location")) {
+                            if session.isRepairingRecovery {
+                                guard saveTunnelIP() else { return }
+                                session.endRecoveryRepair()
+                            }
+                            session.stop(pairing: pairing)
+                        }
+                            .disabled(session.isRepairingRecovery ? !canEditConnection : !session.canRetryRestore)
                     }
                     Text(L10n.tr("Connection checks do not change your position. Shared diagnostics exclude pairing secrets, PINs and exact coordinates."))
                         .font(.footnote).foregroundStyle(.secondary)
@@ -210,7 +240,11 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L10n.tr("Done")) {
-                        if session.canStop || saveTunnelIP() { dismiss() }
+                        if session.isRepairingRecovery {
+                            guard saveTunnelIP() else { return }
+                            session.endRecoveryRepair()
+                            dismiss()
+                        } else if session.canStop || saveTunnelIP() { dismiss() }
                     }
                 }
             }
@@ -226,7 +260,9 @@ struct SettingsView: View {
                 onPick: { url in
                     showImporter = false
                     do {
+                        guard canEditConnection else { return }
                         try pairing.importPairing(from: url)
+                        if session.isRepairingRecovery { _ = saveTunnelIP() }
                     } catch {
                         session.lastError = error.localizedDescription
                     }
@@ -252,6 +288,9 @@ struct SettingsView: View {
             }
             .onAppear {
                 localDevVPNInstalled = LocalDevVPN.isInstalled
+            }
+            .onDisappear {
+                if session.isRepairingRecovery { session.endRecoveryRepair() }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
@@ -279,10 +318,20 @@ struct SettingsView: View {
 
     @discardableResult
     private func saveTunnelIP() -> Bool {
-        guard automaticPort || TunnelConfig.setPort(portText) else {
+        guard canEditConnection else { return false }
+        guard automaticPort || TunnelConfig.isValidPort(portText) else {
             session.lastError = L10n.tr("Enter a service port from 1 to 65535.")
             return false
         }
+        let normalizedIP = tunnelIP.trimmingCharacters(in: .whitespacesAndNewlines)
+        let target = normalizedIP.isEmpty ? TunnelConfig.defaultIP : normalizedIP
+        guard TunnelConfig.isValidIP(target) else {
+            session.lastError = LocationEngineError.invalidIP.localizedDescription
+            return false
+        }
+        if session.isRepairingRecovery,
+           !session.updateRecoveryConfiguration(targetIP: target, pairing: pairing) { return false }
+        if !automaticPort { _ = TunnelConfig.setPort(portText) }
         guard TunnelConfig.setTargetIP(tunnelIP) else {
             session.lastError = LocationEngineError.invalidIP.localizedDescription
             return false

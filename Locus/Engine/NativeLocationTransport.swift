@@ -18,4 +18,6 @@ struct NativeLocationTransport: LocationTransport {
     }
 
     func cancelPendingPreparation() { LocationEngine.cancelPendingPreparation() }
+
+    func invalidateConnectionForRecovery() -> Bool { LocationEngine.invalidateConnectionForRecovery() }
 }

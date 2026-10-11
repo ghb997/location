@@ -83,6 +83,17 @@ enum LocationEngine {
     }
 
     @MainActor
+    static func invalidateConnectionForRecovery() -> Bool {
+        guard gate.canWrite, preparation == nil, !TunnelDiagnostics.shared.isDraining else { return false }
+        activeContext = nil
+        submittedContext = nil
+        // Native handles remain queue-owned. clearLocked first clears the old
+        // connection, then reconnects using freshly resolved repair settings.
+        // lastApplied remains available until a successful clear.
+        return true
+    }
+
+    @MainActor
     static func set(latitude: Double, longitude: Double, pairingPath: String, deviceIP: String) async -> Result<Void, LocationEngineError> {
         guard latitude.isFinite, longitude.isFinite,
               (-90...90).contains(latitude), (-180...180).contains(longitude) else { return .failure(.invalidCoordinate) }

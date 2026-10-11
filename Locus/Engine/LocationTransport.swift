@@ -35,4 +35,7 @@ protocol LocationTransport {
     func clear(pairingPath: String?, deviceIP: String?) async -> Result<Void, LocationEngineError>
     func validateConnection(pairingPath: String, deviceIP: String) async -> Result<Void, LocationEngineError>
     func cancelPendingPreparation()
+    /// Forget the endpoint cache only when no native work is in flight. The
+    /// next clear resolves the repaired endpoint without writing a location.
+    func invalidateConnectionForRecovery() -> Bool
 }

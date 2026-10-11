@@ -299,3 +299,18 @@
 "Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings.";
 "The native pairing listener returned an invalid port." = "The native pairing listener returned an invalid port.";
 "The pairing connection failed. Check Local Network permission and try again after the native listener finishes." = "The pairing connection failed. Check Local Network permission and try again after the native listener finishes.";
+
+/* 1.1.1 stability and recovery */
+"Repair restoration connection" = "Repair restoration connection";
+"If the pairing file or tunnel endpoint has changed, repair the connection here, then clear the previous simulation. New simulations remain blocked until restoration succeeds." = "If the pairing file or tunnel endpoint has changed, repair the connection here, then clear the previous simulation. New simulations remain blocked until restoration succeeds.";
+"Save connection and restore location" = "Save connection and restore location";
+"Repair connection settings" = "Repair connection settings";
+"Selected route" = "Selected route";
+"Route preview" = "Route preview";
+"Current route" = "Current route";
+"Preview selected route" = "Preview selected route";
+"Show current route" = "Show current route";
+"Previewing another route keeps this route and its progress." = "Previewing another route keeps this route and its progress.";
+"Getting a fresh system location…" = "Getting a fresh system location…";
+"The system returned a cached or unavailable location. Retrying…" = "The system returned a cached or unavailable location. Retrying…";
+"Getting a fresh system location timed out. Tap Refresh system location to try again." = "Getting a fresh system location timed out. Tap Refresh system location to try again.";

@@ -31,7 +31,7 @@ final class SessionRecoveryPolicyTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         XCTAssertTrue(store.save(validRecord))
         var invalid = validRecord
-        invalid.point.latitude = .nan
+        invalid.point?.latitude = .nan
         XCTAssertFalse(store.save(invalid))
         invalid = validRecord
         invalid.deviceIP = "256.2.3.4"
@@ -40,6 +40,18 @@ final class SessionRecoveryPolicyTests: XCTestCase {
         invalid.pairingPath = "   "
         XCTAssertFalse(store.save(invalid))
         XCTAssertEqual(store.record, validRecord)
+    }
+
+    func testClearOnlyRecordCanRepairCorruptMetadataWithoutInventingPosition() {
+        let (store, defaults, suite) = makeStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(Data("broken".utf8), forKey: "pending")
+        XCTAssertTrue(store.hasPendingRecord)
+        let repaired = RestorationRecord(point: nil, pairingPath: "/new/pairing.plist", deviceIP: "10.7.0.3")
+        XCTAssertTrue(store.save(repaired))
+        XCTAssertEqual(store.record, repaired)
+        XCTAssertTrue(store.hasPendingRecord)
+        XCTAssertNil(store.record?.point)
     }
 
     func testCorruptMarkerStillRequiresRecovery() {

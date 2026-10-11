@@ -2,7 +2,7 @@
 
 ## 1. 安装 IPA
 
-从[本仓库 Releases](https://github.com/ghb997/location/releases/latest) 下载对应版本的未签名 IPA。1.1.0 的文件名为 `Locus-1.1.0-zh-Hans-unsigned.ipa`；如正式版本尚未发布，可查看[自动构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)中的构建产物。
+从[本仓库 Releases](https://github.com/ghb997/location/releases/latest) 下载对应版本的未签名 IPA。1.1.1 的文件名为 `Locus-1.1.1-zh-Hans-unsigned.ipa`；如正式版本尚未发布，可查看[自动构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)中的构建产物。
 
 此包的 Bundle ID 为 `com.ghb997.location`，未包含个人签名证书，需用你已有的 SideStore、AltStore、Sideloadly、Feather 或其他可用签名工具重新签名，也可在兼容的 LiveContainer 环境中导入。侧载工具重新签名时可能调整标识，以实际安装包为准。
 
@@ -90,3 +90,9 @@ GPX 导入支持 XML 文件，最多 10 MB、50,000 个点，经纬度必须有�
 - **离线坐标覆盖数据不可用**：保持 WGS84，并重新下载完整构建产物；无法加载资源时不能可靠执行 GCJ-02 转换。
 
 当前版本没有任意应用上方的 PiP 悬浮摇杆或 Apple Watch 系统定位联动，也不能保证普通 VPN 与开发者隧道同时启用。TestFlight 分发及各侧载、容器组合仍需对应环境验证。
+
+## 恢复连接需要修改配置时
+
+如果停止恢复失败，且需要重新导入配对文件或修改隧道 IP／端口，请进入设置中的“修复恢复连接”，点击“修复连接设置”。完成配置后点击“保存连接并恢复定位”。此过程保留恢复标记；只有清除成功后才允许新的定位模拟。退出设置不会把尚未确认的恢复标为成功。
+
+静态定位的三次重试耗尽后，网络变化或重返前台会重新检查连接并开始新一轮有限恢复。路线恢复连接后仍需手动继续。停止后若未收到新的系统定位，可在设置中查看获取状态并点击“刷新系统定位”。

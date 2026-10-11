@@ -299,3 +299,18 @@
 "Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "后台定位为可选功能。可在 Locus 设置中开启并授予“始终”定位权限，帮助切换到 iOS 设置时维持配对。";
 "The native pairing listener returned an invalid port." = "底层配对监听返回了无效端口。";
 "The pairing connection failed. Check Local Network permission and try again after the native listener finishes." = "配对连接失败。请检查本地网络权限，等待底层监听结束后重试。";
+
+/* 1.1.1 stability and recovery */
+"Repair restoration connection" = "修复恢复连接";
+"If the pairing file or tunnel endpoint has changed, repair the connection here, then clear the previous simulation. New simulations remain blocked until restoration succeeds." = "如果配对文件或隧道端点已变更，请在此修复连接，再清除之前的模拟位置。恢复成功前无法启动新的模拟。";
+"Save connection and restore location" = "保存连接并恢复定位";
+"Repair connection settings" = "修复连接设置";
+"Selected route" = "所选路线";
+"Route preview" = "路线预览";
+"Current route" = "当前路线";
+"Preview selected route" = "预览所选路线";
+"Show current route" = "显示当前路线";
+"Previewing another route keeps this route and its progress." = "预览其他路线会保留当前路线及其进度。";
+"Getting a fresh system location…" = "正在获取新的系统定位…";
+"The system returned a cached or unavailable location. Retrying…" = "系统返回了缓存或不可用的定位，正在重试…";
+"Getting a fresh system location timed out. Tap Refresh system location to try again." = "获取新的系统定位已超时。请点击“刷新系统定位”重试。";

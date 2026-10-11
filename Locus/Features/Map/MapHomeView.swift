@@ -16,7 +16,7 @@ struct MapHomeView: View {
     @State private var selectedSegmentIndex = 0
     @State private var importSystem: CoordinateSystem = .wgs84
     @State private var draftRevision = 0
-    @State private var targetRevision = 0
+    @State private var routeSelection = MapRouteSelection()
     @State private var routeRequest: Task<Void, Never>?
     @State private var searchRequest: Task<Void, Never>?
     @State private var importRequest: Task<Void, Never>?
@@ -41,6 +41,14 @@ struct MapHomeView: View {
         case 2: return .imagery(elevation: .realistic)
         default: return .standard(elevation: .realistic)
         }
+    }
+
+    private var displayedRoute: RouteTrack? {
+        routeSelection.displayedTrack(draft: session.draftTrack, current: session.currentRoute)
+    }
+
+    private var displayedRouteSource: MapRouteSelection.Source? {
+        routeSelection.resolvedSource(draft: session.draftTrack, current: session.currentRoute)
     }
 
     var body: some View {
@@ -68,8 +76,7 @@ struct MapHomeView: View {
                                     }
                                 },
                                 onRemove: {
-                                    targetRevision += 1
-                                    searchRequest?.cancel()
+                                    beginTargetChange()
                                     suppressNextMapTap = true
                                     withAnimation {
                                         session.pin = nil
@@ -108,7 +115,7 @@ struct MapHomeView: View {
                             }
                         }
                     }
-                    if let track = session.currentRoute ?? session.draftTrack {
+                    if let track = displayedRoute {
                         ForEach(Array(track.segments.enumerated()), id: \.offset) { _, segment in
                             if segment.points.count > 1 {
                                 MapPolyline(coordinates: segment.coordinates.map(displayed))
@@ -165,6 +172,8 @@ struct MapHomeView: View {
                 onSelectTrack: selectTrack,
                 onBuild: buildRoadRoute,
                 onPlay: playRoute,
+                onPreviewDraft: { showRouteOnMap(.draft) },
+                onShowCurrentRoute: { showRouteOnMap(.current) },
                 onImportGPX: { importAfterDismiss = true; showRouteSheet = false },
                 onExportGPX: exportGPX,
                 onUseDrawn: useDrawnPath
@@ -175,8 +184,7 @@ struct MapHomeView: View {
 
     private func placePin(at point: CGPoint, proxy: MapProxy) {
         guard let coord = proxy.convert(point, from: .local) else { return }
-        targetRevision += 1
-        searchRequest?.cancel()
+        beginTargetChange()
         let normalized: CLLocationCoordinate2D
         do { normalized = try CoordinateSettings.mapInput(coord) }
         catch { session.lastError = error.localizedDescription; return }
@@ -207,6 +215,15 @@ struct MapHomeView: View {
                 onDraw: toggleDrawing, onFavorite: saveFavorite,
                 onLocate: { searchFocused = false; goToCurrentLocation() }
             )
+
+            if let track = displayedRoute, let source = displayedRouteSource {
+                RouteMapPreviewBadge(
+                    name: track.name,
+                    source: source,
+                    canSwitch: session.draftTrack != nil && session.currentRoute != nil,
+                    onSwitch: { showRouteOnMap(source == .draft ? .current : .draft) }
+                )
+            }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
@@ -216,6 +233,7 @@ struct MapHomeView: View {
     /// Centers on the spoofed fix while spoofing, otherwise the real GPS —
     /// never the leftover teleport pin (`.automatic` would frame that marker).
     private func goToCurrentLocation() {
+        beginTargetChange()
         session.requestLatestLocation()
         let meters: CLLocationDistance = 900
         withAnimation(.easeInOut(duration: 0.35)) {
@@ -256,15 +274,13 @@ struct MapHomeView: View {
     }
 
     private func select(completion: MKLocalSearchCompletion) {
-        targetRevision += 1
-        let revision = targetRevision
-        searchRequest?.cancel()
+        let revision = beginTargetChange()
         let serviceSystem = CoordinateSystem(rawValue: UserDefaults.standard.string(forKey: CoordinateSettings.serviceKey) ?? "wgs84") ?? .wgs84
         searchRequest = Task {
             let operation = PlaceSearchRequest(completion: completion)
             do {
                 let response = try await operation.response()
-                guard !Task.isCancelled, revision == targetRevision,
+                guard !Task.isCancelled, routeSelection.acceptsTargetChange(revision),
                       let item = response.mapItems.first else { return }
                 let coordinate = try CoordinateTransform.normalize(item.placemark.coordinate, from: serviceSystem)
                 let title = item.name ?? completion.title
@@ -278,7 +294,7 @@ struct MapHomeView: View {
                 searchFocused = false
                 session.pushNamedRecent(name: title, coordinate: coordinate)
             } catch {
-                guard !Task.isCancelled, revision == targetRevision else { return }
+                guard !Task.isCancelled, routeSelection.acceptsTargetChange(revision) else { return }
                 session.lastError = L10n.tr("Place search failed. Check the network and try again.")
             }
         }
@@ -290,18 +306,16 @@ struct MapHomeView: View {
             session.lastError = L10n.tr("Set a route start and end.")
             return
         }
-        draftRevision += 1
+        cancelDraftPreparation()
         let revision = draftRevision
-        routeRequest?.cancel()
-        importRequest?.cancel()
-        importLoader.cancel()
+        let targetRevision = beginTargetChange()
         isRouting = true
         routeRequest = Task {
             do {
                 let coordinates = try await RouteBuilder.roadRoute(from: start, to: end, mode: session.travelMode)
                 guard !Task.isCancelled, revision == draftRevision else { return }
                 installTracks([RouteTrack(name: L10n.tr("Road route"), kind: .route,
-                    segments: [RouteSegment(points: coordinates.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .appleRoute)
+                    segments: [RouteSegment(points: coordinates.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .appleRoute, targetRevision: targetRevision)
                 isRouting = false
             } catch {
                 guard !Task.isCancelled, revision == draftRevision else { return }
@@ -321,6 +335,10 @@ struct MapHomeView: View {
                                   segments: Array(track.segments.dropFirst(index)))
         showRouteSheet = false
         session.followRoute(playback, pairing: pairing)
+        if session.currentRoute?.id == playback.id {
+            beginTargetChange()
+            routeSelection.show(.current)
+        }
     }
 
     private func useDrawnPath() {
@@ -328,38 +346,41 @@ struct MapHomeView: View {
             session.lastError = L10n.tr("Draw at least two points first.")
             return
         }
-        draftRevision += 1
-        routeRequest?.cancel()
-        importRequest?.cancel()
-        importLoader.cancel()
-        isRouting = false
+        cancelDraftPreparation()
+        let targetRevision = beginTargetChange()
         installTracks([RouteTrack(name: L10n.tr("Drawn route"), kind: .track,
-            segments: [RouteSegment(points: drawnPath.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .mapSelection)
+            segments: [RouteSegment(points: drawnPath.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .mapSelection, targetRevision: targetRevision)
         drawnPath.removeAll()
         drawMode = false
     }
 
-    private func installTracks(_ tracks: [RouteTrack], source: CoordinateSource) {
+    private func installTracks(_ tracks: [RouteTrack], source: CoordinateSource, targetRevision: UInt64) {
         importedTracks = tracks
         draftSource = source
-        pinPlaceName = nil
-        namedPinCoordinate = nil
         session.draftTrack = RouteDocument(tracks: tracks).preferredTrack
         selectedSegmentIndex = 0
-        if let first = session.draftTrack?.segments.first?.coordinates.first {
-            session.pin = first
-            session.pinSource = source
-            position = .region(MKCoordinateRegion(center: displayed(first), latitudinalMeters: 2000, longitudinalMeters: 2000))
-        }
+        // A search or map selection made after import/build began owns the pin.
+        guard routeSelection.previewDraft(replacingTarget: targetRevision) else { return }
+        setDraftTarget()
     }
 
     private func selectTrack(_ id: UUID) {
         guard let track = importedTracks.first(where: { $0.id == id }) else { return }
+        cancelDraftPreparation()
         session.draftTrack = track
         selectedSegmentIndex = 0
+        routeSelection.previewDraft()
+        setDraftTarget()
+    }
+
+    private func setDraftTarget() {
+        searchRequest?.cancel()
+        searchRequest = nil
         pinPlaceName = nil
         namedPinCoordinate = nil
-        if let first = track.segments.first(where: { $0.canPlay })?.coordinates.first {
+        guard let track = session.draftTrack else { return }
+        if let first = (track.segments.first(where: { $0.canPlay })
+            ?? track.segments.first(where: { !$0.points.isEmpty }))?.points.first?.coordinate {
             session.pin = first
             session.pinSource = draftSource
             position = .region(MKCoordinateRegion(center: displayed(first), latitudinalMeters: 2000, longitudinalMeters: 2000))
@@ -367,10 +388,9 @@ struct MapHomeView: View {
     }
 
     private func importGPX(_ url: URL, system: CoordinateSystem) {
-        draftRevision += 1
+        cancelDraftPreparation()
         let revision = draftRevision
-        routeRequest?.cancel()
-        importRequest?.cancel()
+        let targetRevision = beginTargetChange()
         isRouting = true
         importRequest = Task {
             do {
@@ -392,7 +412,7 @@ struct MapHomeView: View {
                     return tracks
                 }
                 guard !Task.isCancelled, revision == draftRevision else { return }
-                installTracks(document, source: .gpx)
+                installTracks(document, source: .gpx, targetRevision: targetRevision)
                 isRouting = false
                 showRouteSheet = true
             } catch {
@@ -415,14 +435,38 @@ struct MapHomeView: View {
     }
 
     private func setPinFromMap(_ coordinate: CLLocationCoordinate2D) {
-        targetRevision += 1
-        searchRequest?.cancel()
+        beginTargetChange()
         let normalized: CLLocationCoordinate2D
         do { normalized = try CoordinateSettings.mapInput(coordinate) }
         catch { session.lastError = error.localizedDescription; return }
         session.pin = normalized
         session.pinSource = .mapSelection
         pinPlaceName = nil
+    }
+
+    @discardableResult
+    private func beginTargetChange() -> UInt64 {
+        searchRequest?.cancel()
+        searchRequest = nil
+        return routeSelection.beginTargetChange()
+    }
+
+    private func cancelDraftPreparation() {
+        draftRevision += 1
+        routeRequest?.cancel()
+        routeRequest = nil
+        importRequest?.cancel()
+        importRequest = nil
+        importLoader.cancel()
+        isRouting = false
+    }
+
+    private func showRouteOnMap(_ source: MapRouteSelection.Source) {
+        beginTargetChange()
+        routeSelection.show(source)
+        searchFocused = false
+        guard let first = displayedRoute?.segments.first(where: { !$0.points.isEmpty })?.points.first else { return }
+        position = .region(MKCoordinateRegion(center: displayed(first.coordinate), latitudinalMeters: 2000, longitudinalMeters: 2000))
     }
 
     private func exportGPX() {
@@ -449,6 +493,34 @@ struct MapHomeView: View {
         } catch {
             session.lastError = error.localizedDescription
         }
+    }
+}
+
+private struct RouteMapPreviewBadge: View {
+    let name: String
+    let source: MapRouteSelection.Source
+    let canSwitch: Bool
+    let onSwitch: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source == .draft ? L10n.tr("Route preview") : L10n.tr("Current route"))
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(name).font(.subheadline).lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            if canSwitch {
+                Button(action: onSwitch) {
+                    Image(systemName: "arrow.triangle.swap")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(source == .draft ? L10n.tr("Show current route") : L10n.tr("Preview selected route"))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

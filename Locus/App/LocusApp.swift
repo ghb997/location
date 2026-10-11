@@ -48,12 +48,16 @@ struct LocusApp: App {
     private func handleIncoming(_ url: URL) {
         let ext = url.pathExtension.lowercased()
         if ["plist", "mobiledevicepairing", "mobiledevicepair"].contains(ext) {
-            guard !session.canStop, !pairOnDevice.isWorkerRunning else {
+            guard (!session.canStop || session.isRepairingRecovery), !session.isBusy,
+                  !TunnelDiagnostics.shared.isDraining, !pairOnDevice.isWorkerRunning else {
                 session.lastError = L10n.tr("Stop the current simulation before changing pairing or tunnel settings.")
                 return
             }
             do {
                 try pairing.importPairing(from: url)
+                if session.isRepairingRecovery {
+                    _ = session.updateRecoveryConfiguration(targetIP: TunnelConfig.targetIP, pairing: pairing)
+                }
             } catch {
                 session.lastError = error.localizedDescription
             }
