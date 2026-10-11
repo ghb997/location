@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject private var diagnostics = TunnelDiagnostics.shared
-    @AppStorage(TunnelConfig.automaticPortKey) private var automaticPort = true
+    @State private var automaticPort = TunnelConfig.automaticPort
     @AppStorage(CoordinateSettings.mapKey) private var mapSystem = "wgs84"
     @AppStorage(CoordinateSettings.serviceKey) private var serviceSystem = "wgs84"
     @AppStorage(SilentAudioKeepAlive.preferenceKey) private var pairingAudio = false
@@ -332,6 +332,7 @@ struct SettingsView: View {
         if session.isRepairingRecovery,
            !session.updateRecoveryConfiguration(targetIP: target, pairing: pairing) { return false }
         if !automaticPort { _ = TunnelConfig.setPort(portText) }
+        UserDefaults.standard.set(automaticPort, forKey: TunnelConfig.automaticPortKey)
         guard TunnelConfig.setTargetIP(tunnelIP) else {
             session.lastError = LocationEngineError.invalidIP.localizedDescription
             return false

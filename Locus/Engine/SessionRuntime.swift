@@ -2,7 +2,7 @@ import CoreLocation
 import Foundation
 
 @MainActor
-protocol PairingProviding: AnyObject {
+protocol PairingProviding: AnyObject, Sendable {
     var hasPairingFile: Bool { get }
     var pairingPath: String { get }
 }
