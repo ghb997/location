@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 struct PlacesView: View {
@@ -7,6 +8,8 @@ struct PlacesView: View {
 
     @State private var placeToRename: SavedPlace?
     @State private var renameText = ""
+    @State private var correctionPreview: CoordinateCorrectionPreview?
+    @State private var correctionError: String?
 
     var body: some View {
         NavigationStack {
@@ -32,6 +35,18 @@ struct PlacesView: View {
                                 }
                                 .tint(.gray)
                             }
+                            .contextMenu {
+                                if place.isLegacy {
+                                    Button(L10n.tr("Interpret legacy coordinates as GCJ-02")) {
+                                        previewCorrection(place)
+                                    }
+                                }
+                                if place.canRestore {
+                                    Button(L10n.tr("Restore original coordinates")) {
+                                        session.restoreFavoriteOriginalCoordinate(place)
+                                    }
+                                }
+                            }
                     }
                 }
 
@@ -47,6 +62,18 @@ struct PlacesView: View {
                                     session.removeRecent(place)
                                 } label: {
                                     Label(L10n.tr("Delete"), systemImage: "trash.fill")
+                                }
+                            }
+                            .contextMenu {
+                                if place.isLegacy {
+                                    Button(L10n.tr("Interpret legacy coordinates as GCJ-02")) {
+                                        previewCorrection(place, isRecent: true)
+                                    }
+                                }
+                                if place.canRestore {
+                                    Button(L10n.tr("Restore original coordinates")) {
+                                        session.restoreRecentOriginalCoordinate(place)
+                                    }
                                 }
                             }
                     }
@@ -75,11 +102,24 @@ struct PlacesView: View {
             } message: {
                 Text(L10n.tr("Choose a name you’ll recognize later."))
             }
+            .sheet(item: $correctionPreview) { preview in
+                correctionSheet(preview)
+            }
+            .alert(L10n.tr("Coordinate correction"), isPresented: Binding(
+                get: { correctionError != nil },
+                set: { if !$0 { correctionError = nil } }
+            )) {
+                Button(L10n.tr("OK"), role: .cancel) { correctionError = nil }
+            } message: {
+                Text(correctionError ?? "")
+            }
         }
     }
 
     private func placeButton(_ place: SavedPlace) -> some View {
         Button {
+            guard session.canWrite else { return }
+            session.pinSource = place.source
             session.teleport(to: place.coordinate, pairing: pairing)
             dismiss()
         } label: {
@@ -90,5 +130,62 @@ struct PlacesView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .disabled(!session.canWrite)
+    }
+
+    private func previewCorrection(_ place: SavedPlace, isRecent: Bool = false) {
+        do {
+            correctionPreview = CoordinateCorrectionPreview(original: place, corrected: try place.correctedFromGCJ02(), isRecent: isRecent)
+        } catch {
+            correctionError = error.localizedDescription
+        }
+    }
+
+    private func correctionSheet(_ preview: CoordinateCorrectionPreview) -> some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(preview.original.name)
+                    LabeledContent(L10n.tr("Original coordinates"), value: coordinateText(preview.original))
+                    LabeledContent(L10n.tr("WGS84 coordinates"), value: coordinateText(preview.corrected))
+                    Text(L10n.format("Approximate shift: %.0f m", preview.distance))
+                }
+                Section {
+                    Text(L10n.tr("Only apply this correction if the legacy numbers originally came from GCJ-02. WGS84 points do not need correction. You can restore the original coordinates afterward."))
+                        .font(.footnote)
+                }
+                Section {
+                    Button(L10n.tr("Apply coordinate correction")) {
+                        if preview.isRecent {
+                            session.correctRecentFromGCJ02(preview.original)
+                        } else {
+                            session.correctFavoriteFromGCJ02(preview.original)
+                        }
+                        correctionPreview = nil
+                    }
+                }
+            }
+            .navigationTitle(L10n.tr("Coordinate correction"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L10n.tr("Cancel")) { correctionPreview = nil }
+                }
+            }
+        }
+    }
+
+    private func coordinateText(_ place: SavedPlace) -> String {
+        String(format: "%.6f, %.6f", place.latitude, place.longitude)
+    }
+}
+
+private struct CoordinateCorrectionPreview: Identifiable {
+    let original: SavedPlace
+    let corrected: SavedPlace
+    var isRecent: Bool = false
+    var id: String { original.id }
+    var distance: Double {
+        CLLocation(latitude: original.latitude, longitude: original.longitude)
+            .distance(from: CLLocation(latitude: corrected.latitude, longitude: corrected.longitude))
     }
 }
