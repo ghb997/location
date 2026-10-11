@@ -261,12 +261,9 @@ struct MapHomeView: View {
         searchRequest?.cancel()
         let serviceSystem = CoordinateSystem(rawValue: UserDefaults.standard.string(forKey: CoordinateSettings.serviceKey) ?? "wgs84") ?? .wgs84
         searchRequest = Task {
-            let request = MKLocalSearch.Request(completion: completion)
-            let operation = MKLocalSearch(request: request)
+            let operation = PlaceSearchRequest(completion: completion)
             do {
-                let response = try await withTaskCancellationHandler {
-                    try await operation.start()
-                } onCancel: { operation.cancel() }
+                let response = try await operation.response()
                 guard !Task.isCancelled, revision == targetRevision,
                       let item = response.mapItems.first else { return }
                 let coordinate = try CoordinateTransform.normalize(item.placemark.coordinate, from: serviceSystem)

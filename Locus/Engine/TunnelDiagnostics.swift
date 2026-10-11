@@ -208,9 +208,19 @@ private final class RemotePairingDiscovery: NSObject, NetServiceDelegate {
         }
     }
 
-    func netServiceDidResolveAddress(_ sender: NetService) {
-        guard continuation != nil, (1...65535).contains(sender.port) else { return }
-        let addresses = (sender.addresses ?? []).compactMap { data -> String? in
+    nonisolated func netServiceDidResolveAddress(_ sender: NetService) {
+        // Copy immutable values on the callback thread. The NetService instance
+        // stays on that thread; only its Sendable snapshot crosses to MainActor.
+        let port = sender.port
+        let addressData = sender.addresses ?? []
+        Task { @MainActor [weak self] in
+            self?.resolvedAddress(port: port, addressData: addressData)
+        }
+    }
+
+    private func resolvedAddress(port: Int, addressData: [Data]) {
+        guard continuation != nil, (1...65535).contains(port) else { return }
+        let addresses = addressData.compactMap { data -> String? in
             guard data.count >= MemoryLayout<sockaddr_in>.size else { return nil }
             return data.withUnsafeBytes { raw -> String? in
                 guard let base = raw.baseAddress else { return nil }
@@ -223,10 +233,10 @@ private final class RemotePairingDiscovery: NSObject, NetServiceDelegate {
         }
         guard TunnelPolicy.accepts(addresses: addresses, targetIP: targetIP,
                                    localAddresses: LocalDevVPN.ipv4InterfaceAddresses()) else { return }
-        finish(.success(TunnelEndpoint(ip: targetIP, port: UInt16(sender.port), source: .bonjour)))
+        finish(.success(TunnelEndpoint(ip: targetIP, port: UInt16(port), source: .bonjour)))
     }
 
-    func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) { }
+    nonisolated func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) { }
 
     private func finish(_ result: Result<TunnelEndpoint?, Error>) {
         guard let continuation else { return }

@@ -17,6 +17,7 @@ let package = Package(
                 "Resources/zh-Hans.lproj",
                 "Resources/Info.plist",
                 "Resources/Locus.entitlements",
+                "Resources/Assets.xcassets",
                 "Engine/BackgroundKeepAlive.swift",
                 "Engine/LocationEngine.swift",
                 "Engine/NativeLocationTransport.swift",
