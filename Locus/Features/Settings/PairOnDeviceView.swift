@@ -12,7 +12,7 @@ struct PairOnDeviceView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
-    @StateObject private var host = PairOnDeviceService()
+    @EnvironmentObject private var host: PairOnDeviceService
 
     var mode: Mode = .sheet
     var onFinished: (() -> Void)?
@@ -47,6 +47,9 @@ struct PairOnDeviceView: View {
             if phase == .active, host.isBusy {
                 _ = host.pin
             }
+        }
+        .onDisappear {
+            if host.isBusy { host.cancel() }
         }
     }
 
@@ -99,6 +102,9 @@ struct PairOnDeviceView: View {
             step(2, L10n.tr("Allow notifications — the code can appear as a banner over Settings."))
             step(3, L10n.tr("Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair."))
             step(4, L10n.tr("Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code."))
+            Text(L10n.tr("Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -214,6 +220,7 @@ struct PairOnDeviceView: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .disabled(host.isWorkerRunning)
         case .succeeded:
             Button {
                 if let onFinished {
@@ -232,7 +239,9 @@ struct PairOnDeviceView: View {
             }
             .buttonStyle(.plain)
         case .advertising, .deviceConnected, .awaitingPIN:
-            Text({
+            VStack(spacing: 12) {
+                Button(L10n.tr("Cancel pairing"), role: .cancel) { host.cancel() }
+                Text({
                 switch host.phase {
                 case .awaitingPIN: return L10n.tr("Type the code above into the second Settings prompt.")
                 case .deviceConnected: return L10n.tr("Connected — code coming next.")
@@ -243,6 +252,7 @@ struct PairOnDeviceView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
+            }
         }
     }
 }

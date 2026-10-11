@@ -6,11 +6,15 @@ import Network
 /// Uses Network.framework `NWListener` + Bonjour (what iOS 27 Developer Mode
 /// browses). Inbound connections are relayed to the Rust pairable-host on
 /// 127.0.0.1 so accept() still completes while Settings is in the foreground.
+@MainActor
 final class PairableHostAdvertiser {
+    var onFailure: ((String) -> Void)?
     private var listener: NWListener?
     private var activeRelay: RelayPipe?
+    private var activeRelayID: UUID?
     private(set) var publishedPort: UInt16 = 0
     private var rustLoopbackPort: UInt16 = 0
+    private var generation = 0
 
     func publish(
         port: UInt16,
@@ -22,6 +26,7 @@ final class PairableHostAdvertiser {
         minVer: String
     ) {
         stop()
+        let token = generation
         rustLoopbackPort = port
 
         var txt = NWTXTRecord()
@@ -47,48 +52,50 @@ final class PairableHostAdvertiser {
             )
 
             listener.stateUpdateHandler = { [weak self] state in
-                switch state {
-                case .ready:
-                    let p = listener.port?.rawValue ?? 0
-                    self?.publishedPort = p
-                    NSLog("[Locus] NWListener ready on port %u (relay → 127.0.0.1:%u)", p, port)
-                case .failed(let error):
-                    NSLog("[Locus] NWListener failed: %@", String(describing: error))
-                case .cancelled:
-                    NSLog("[Locus] NWListener cancelled")
-                default:
-                    break
+                DispatchQueue.main.async {
+                    guard let self, self.generation == token else { return }
+                    switch state {
+                    case .ready: self.publishedPort = listener.port?.rawValue ?? 0
+                    case .failed(let error): self.onFailure?(error.localizedDescription)
+                    default: break
+                    }
                 }
             }
 
             listener.newConnectionHandler = { [weak self] connection in
-                NSLog(
-                    "[Locus] NWListener accepted %@",
-                    String(describing: connection.endpoint)
-                )
-                self?.relay(connection)
+                DispatchQueue.main.async {
+                    guard let self, self.generation == token else { connection.cancel(); return }
+                    self.relay(connection)
+                }
             }
 
-            listener.start(queue: .global(qos: .userInitiated))
+            listener.start(queue: .main)
             self.listener = listener
-            NSLog("[Locus] NWListener starting; will relay → 127.0.0.1:%u", port)
         } catch {
-            NSLog("[Locus] NWListener start failed: %@", error.localizedDescription)
+            onFailure?(error.localizedDescription)
         }
     }
 
     func stop() {
+        generation += 1
         activeRelay?.cancel()
         activeRelay = nil
+        activeRelayID = nil
+        listener?.stateUpdateHandler = nil
+        listener?.newConnectionHandler = nil
         listener?.cancel()
         listener = nil
+        publishedPort = 0
     }
 
     private func relay(_ inbound: NWConnection) {
         activeRelay?.cancel()
+        activeRelay = nil
+        activeRelayID = nil
         let rustPort = rustLoopbackPort
         guard rustPort > 0, let nwPort = NWEndpoint.Port(rawValue: rustPort) else {
             inbound.cancel()
+            onFailure?(L10n.tr("The native pairing listener returned an invalid port."))
             return
         }
 
@@ -97,8 +104,16 @@ final class PairableHostAdvertiser {
             port: nwPort,
             using: .tcp
         )
-        let pipe = RelayPipe(inbound: inbound, outbound: outbound)
+        let token = generation
+        let relayID = UUID()
+        let pipe = RelayPipe(inbound: inbound, outbound: outbound) { [weak self] message in
+            DispatchQueue.main.async {
+                guard let self, self.generation == token, self.activeRelayID == relayID else { return }
+                self.onFailure?(message)
+            }
+        }
         activeRelay = pipe
+        activeRelayID = relayID
         pipe.start()
     }
 }
@@ -108,15 +123,18 @@ private final class RelayPipe {
     private let inbound: NWConnection
     private let outbound: NWConnection
     private let queue = DispatchQueue(label: "locus.pairable.relay")
+    private let onFailure: (String) -> Void
+    private var cancelled = false
 
-    init(inbound: NWConnection, outbound: NWConnection) {
+    init(inbound: NWConnection, outbound: NWConnection, onFailure: @escaping (String) -> Void) {
         self.inbound = inbound
         self.outbound = outbound
+        self.onFailure = onFailure
     }
 
     func start() {
         inbound.stateUpdateHandler = { [weak self] state in
-            if case .failed = state { self?.cancel() }
+            if case .failed(let error) = state { self?.fail(error) }
             if case .cancelled = state { self?.cancel() }
         }
         outbound.stateUpdateHandler = { [weak self] state in
@@ -128,7 +146,7 @@ private final class RelayPipe {
                 self.pump(from: self.outbound, to: self.inbound)
             case .failed(let error):
                 NSLog("[Locus] relay to Rust failed: %@", String(describing: error))
-                self.cancel()
+                self.fail(error)
             case .cancelled:
                 self.cancel()
             default:
@@ -140,23 +158,37 @@ private final class RelayPipe {
     }
 
     func cancel() {
+        queue.async { [self] in stopOnQueue() }
+    }
+
+    private func stopOnQueue() {
+        guard !cancelled else { return }
+        cancelled = true
+        inbound.stateUpdateHandler = nil
+        outbound.stateUpdateHandler = nil
         inbound.cancel()
         outbound.cancel()
     }
 
+    private func fail(_ error: NWError) {
+        guard !cancelled else { return }
+        stopOnQueue()
+        onFailure(error.localizedDescription)
+    }
+
     private func pump(from: NWConnection, to: NWConnection) {
         from.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
+            guard let self, !self.cancelled else { return }
             if let error {
                 NSLog("[Locus] relay receive error: %@", String(describing: error))
-                self.cancel()
+                self.fail(error)
                 return
             }
             if let data, !data.isEmpty {
                 to.send(content: data, completion: .contentProcessed { sendError in
                     if let sendError {
                         NSLog("[Locus] relay send error: %@", String(describing: sendError))
-                        self.cancel()
+                        self.fail(sendError)
                         return
                     }
                     if isComplete {

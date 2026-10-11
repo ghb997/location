@@ -4,15 +4,18 @@ import Foundation
 /// Plays near-silent audio so iOS keeps Locus runnable (and able to accept
 /// TCP) while the user is in Settings › Developer Mode.
 final class SilentAudioKeepAlive {
+    static let preferenceKey = "locus.pairingAudioKeepAlive"
     private var player: AVAudioPlayer?
     private var wasActive = false
+    private var activatedSession = false
 
     func start() {
-        guard !wasActive else { return }
+        guard UserDefaults.standard.bool(forKey: Self.preferenceKey), !wasActive else { return }
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, options: [.mixWithOthers])
             try session.setActive(true)
+            activatedSession = true
 
             // 0.1s of near-silence, looped.
             let url = try Self.writeSilentWAV()
@@ -20,11 +23,12 @@ final class SilentAudioKeepAlive {
             p.numberOfLoops = -1
             p.volume = 0.01
             p.prepareToPlay()
-            p.play()
+            guard p.play() else { stop(); return }
             player = p
             wasActive = true
             NSLog("[Locus] silent audio keep-alive started")
         } catch {
+            stop()
             NSLog("[Locus] silent audio keep-alive failed: %@", error.localizedDescription)
         }
     }
@@ -33,7 +37,10 @@ final class SilentAudioKeepAlive {
         player?.stop()
         player = nil
         wasActive = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if activatedSession {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            activatedSession = false
+        }
     }
 
     private static func writeSilentWAV() throws -> URL {

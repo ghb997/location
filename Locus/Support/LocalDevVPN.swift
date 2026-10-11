@@ -15,7 +15,7 @@ enum LocalDevVPN {
 
     /// LocalDevVPN puts the tunnel network on a `10.7.0.x` (or custom) utun when connected.
     static var isConnected: Bool {
-        let addresses = ipv4InterfaceAddresses()
+        let addresses = ipv4InterfaceAddresses(utunOnly: true)
         let target = TunnelConfig.targetIP
         if addresses.contains(target) { return true }
 
@@ -42,7 +42,8 @@ enum LocalDevVPN {
         }
     }
 
-    private static func ipv4InterfaceAddresses() -> [String] {
+    /// An interface hint only; a matching address does not verify RemotePairing.
+    static func ipv4InterfaceAddresses(utunOnly: Bool = false) -> [String] {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return [] }
         defer { freeifaddrs(ifaddr) }
@@ -52,7 +53,7 @@ enum LocalDevVPN {
         while let current = ptr {
             let interface = current.pointee
             if let address = interface.ifa_addr,
-               String(cString: interface.ifa_name).hasPrefix("utun"),
+               (!utunOnly || String(cString: interface.ifa_name).hasPrefix("utun")),
                address.pointee.sa_family == UInt8(AF_INET) {
                 var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                 let nameLen = socklen_t(MemoryLayout<sockaddr_in>.size)

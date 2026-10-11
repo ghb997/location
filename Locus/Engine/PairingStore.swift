@@ -89,6 +89,28 @@ final class PairingStore: ObservableObject {
         hasPairingFile = false
     }
 
+    /// Only the active pairing run may call this on MainActor. A cancelled native
+    /// worker never receives the final destination path.
+    func installCompletedPairing(from temporaryURL: URL) throws {
+        let handle = try FileHandle(forReadingFrom: temporaryURL)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: PairingFileValidator.maximumBytes + 1) ?? Data()
+        try installPairingData(data)
+    }
+
+    func makeTemporaryPairingURL() throws -> URL {
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        let url = directoryURL.appendingPathComponent("pairing-run-\(UUID().uuidString).plist")
+        try Data().write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        var privateURL = url
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try privateURL.setResourceValues(values)
+        return url
+    }
+
     private func installPairingData(_ data: Data) throws {
         guard looksLikePairingPlist(data) else {
             throw PairingImportError.invalidContents
