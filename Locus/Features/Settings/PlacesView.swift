@@ -98,6 +98,7 @@ struct PlacesView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .background { LocusSheetBackground() }
             .navigationTitle(L10n.tr("Places"))
             .confirmationDialog(L10n.tr("Restore saved-place backup?"), isPresented: $showRecoveryConfirmation, titleVisibility: .visible) {
                 Button(L10n.tr("Restore backup")) { session.recoverPlaces(recent: recoveryIsRecent) }

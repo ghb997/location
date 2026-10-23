@@ -237,6 +237,7 @@ struct SettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .background { LocusSheetBackground() }
             .navigationTitle(L10n.tr("Settings"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

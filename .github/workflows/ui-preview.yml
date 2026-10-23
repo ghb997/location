@@ -1,0 +1,62 @@
+name: Render location UI preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - 'DesignPreview/**'
+      - 'Locus/Features/**'
+      - 'Locus/Engine/Route*.swift'
+      - 'Locus/Support/Theme.swift'
+      - 'Locus/Support/IconButton.swift'
+      - 'Locus/Support/L10n.swift'
+      - 'Locus/Resources/**/*.strings'
+      - '.github/workflows/ui-preview.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XCODE_APP=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort -V | tail -n 1)
+          test -n "$XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+      - name: Generate isolated component preview project
+        run: |
+          brew install xcodegen
+          mkdir -p outputs/preview-project outputs/ui-preview
+          xcodegen generate --spec DesignPreview/project.yml --project outputs/preview-project
+      - name: Build production UI components for Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project outputs/preview-project/LocationDesignPreview.xcodeproj \
+            -scheme LocationDesignPreview -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath outputs/preview-build CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO build 2>&1 | tee outputs/ui-preview/build.log
+      - name: Render Chinese iPhone and iPad scenarios
+        run: |
+          set -o pipefail
+          python3 DesignPreview/render_simulator.py \
+            --app outputs/preview-build/Build/Products/Debug-iphonesimulator/LocationDesignPreview.app \
+            --output outputs/ui-preview 2>&1 | tee outputs/ui-preview/render.log
+      - name: Upload screenshots and rendering evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: location-UI-component-preview
+          path: outputs/ui-preview
+          if-no-files-found: error
+          retention-days: 30

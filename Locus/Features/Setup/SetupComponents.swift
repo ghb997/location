@@ -56,7 +56,7 @@ struct SetupPrimaryButton: View {
     private var label: some View {
         Text(title)
             .font(.headline)
-            .foregroundStyle(.black)
+            .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 16)
@@ -73,7 +73,7 @@ struct SetupStepRow: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
                 .background(LocusTheme.accent, in: Circle())
             Text(text)

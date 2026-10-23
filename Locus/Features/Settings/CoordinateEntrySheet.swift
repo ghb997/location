@@ -38,9 +38,12 @@ struct CoordinateEntrySheet: View {
                     .font(.footnote).foregroundStyle(.secondary)
                 Button(L10n.tr("Use these coordinates"), action: select).disabled(normalized == nil)
             }
+            .scrollContentBackground(.hidden)
+            .background { LocusSheetBackground() }
             .navigationTitle(L10n.tr("Enter coordinates"))
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L10n.tr("Cancel")) { dismiss() } } }
         }
+        .locusSheetBackdrop()
     }
 
     private func select() {

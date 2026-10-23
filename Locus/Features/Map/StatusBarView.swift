@@ -28,23 +28,26 @@ struct StatusBarView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 statusLabel
-                coordinateLabel.padding(.leading, 24)
+                coordinateLabel.padding(.leading, 35)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16).padding(.vertical, 12)
+        .padding(.horizontal, 12).padding(.vertical, 10)
         .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
     private var statusLabel: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 9) {
+        HStack(alignment: .center, spacing: 9) {
             Image(systemName: statusSymbol)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(statusColor)
+                .frame(width: 26, height: 26)
+                .background(statusColor.opacity(0.1), in: Circle())
                 .accessibilityHidden(true)
             Text(title)
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(LocusTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

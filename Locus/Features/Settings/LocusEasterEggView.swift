@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Full-screen easter egg: a swarm of locusts (the bugs) scurries across the void.
+/// Full-screen easter egg: a swarm of locusts (the bugs) crosses a light meadow.
 /// Spelling optional. Humor mandatory.
 struct LocusEasterEggView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let swarm: [Critter] = [
         .init(band: 0.10, size: 36, speed: 0.14, reverse: false, bob: 10),
@@ -27,19 +28,10 @@ struct LocusEasterEggView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.06, green: 0.09, blue: 0.08),
-                        Color.black,
-                        Color(red: 0.08, green: 0.06, blue: 0.04)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                SetupBackground()
 
-                TimelineView(.animation(minimumInterval: 1 / 30, paused: false)) { context in
-                    let t = context.date.timeIntervalSinceReferenceDate
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
+                    let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
                     ZStack {
                         ForEach(Array(swarm.enumerated()), id: \.offset) { index, critter in
                             critterView(critter, index: index, time: t, size: geo.size)
@@ -57,11 +49,12 @@ struct LocusEasterEggView: View {
                             Image(systemName: "xmark")
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(.primary)
-                                .frame(width: 36, height: 36)
+                                .frame(width: 44, height: 44)
                                 .contentShape(Circle())
                         }
                         .buttonStyle(.plain)
                         .locusGlass(.interactive, in: Circle())
+                        .accessibilityLabel(L10n.tr("Close"))
                         .padding(.trailing, 16)
                         .padding(.top, 12)
                     }
@@ -69,12 +62,13 @@ struct LocusEasterEggView: View {
 
                     Text(L10n.tr("close enough"))
                         .font(.caption.italic())
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(.secondary)
                         .padding(.bottom, 28)
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .foregroundStyle(LocusTheme.ink)
+        .preferredColorScheme(.light)
         .statusBarHidden(true)
     }
 
@@ -91,7 +85,7 @@ struct LocusEasterEggView: View {
             .font(.system(size: critter.size))
             .rotationEffect(.degrees(wobble))
             .scaleEffect(x: critter.reverse ? -1 : 1, y: 1)
-            .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+            .shadow(color: LocusTheme.ink.opacity(0.12), radius: 4, y: 2)
             .position(x: x, y: y)
             .accessibilityHidden(true)
     }

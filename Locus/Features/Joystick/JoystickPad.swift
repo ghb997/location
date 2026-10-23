@@ -14,19 +14,23 @@ struct JoystickPad: View {
                 .locusGlass(.regular, in: Circle())
 
             Circle()
-                .stroke(LocusTheme.accent.opacity(0.4), lineWidth: 2)
+                .stroke(LocusTheme.accent.opacity(0.2), lineWidth: 1)
                 .frame(width: radius * 2, height: radius * 2)
                 .accessibilityHidden(true)
 
             Image(systemName: "plus")
                 .font(.system(size: 46, weight: .ultraLight))
-                .foregroundStyle(LocusTheme.accent.opacity(0.35))
+                .foregroundStyle(LocusTheme.accent.opacity(0.28))
                 .accessibilityHidden(true)
 
             Circle()
-                .fill(LocusTheme.accent)
+                .fill(LinearGradient(colors: [.white, LocusTheme.canvas], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .frame(width: 44, height: 44)
-                .shadow(color: LocusTheme.accent.opacity(0.45), radius: 8)
+                .overlay(Circle().stroke(LocusTheme.accent.opacity(0.3), lineWidth: 1))
+                .overlay {
+                    Circle().fill(LocusTheme.accent).frame(width: 10, height: 10)
+                }
+                .shadow(color: LocusTheme.accent.opacity(0.16), radius: 8, y: 3)
                 .offset(dragOffset)
                 .gesture(
                     DragGesture(minimumDistance: 0)

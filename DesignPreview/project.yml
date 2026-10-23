@@ -1,0 +1,53 @@
+name: LocationDesignPreview
+options:
+  developmentLanguage: zh-Hans
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
+targets:
+  LocationDesignPreview:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: ../Locus/Support/Theme.swift
+      - path: ../Locus/Support/IconButton.swift
+      - path: ../Locus/Support/L10n.swift
+      - path: ../Locus/Features/Map/StatusBarView.swift
+      - path: ../Locus/Features/Map/MapSearchBar.swift
+      - path: ../Locus/Features/Map/MapToolbar.swift
+      - path: ../Locus/Features/Map/BottomControlsView.swift
+      - path: ../Locus/Features/Map/MapBottomChrome.swift
+      - path: ../Locus/Features/Map/MapDropPin.swift
+      - path: ../Locus/Features/Joystick/JoystickPad.swift
+      - path: ../Locus/Features/Routes/RoutePlaybackControls.swift
+      - path: ../Locus/Engine/RouteDocument.swift
+      - path: ../Locus/Engine/RouteGeometry.swift
+      - path: ../Locus/Engine/RoutePlaybackCore.swift
+      - path: ../Locus/Resources/en.lproj/Localizable.strings
+        buildPhase: resources
+      - path: ../Locus/Resources/zh-Hans.lproj/Localizable.strings
+        buildPhase: resources
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: location UI Preview
+        CFBundleLocalizations: [en, zh-Hans]
+        UIUserInterfaceStyle: Light
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ghb997.location.designpreview
+        PRODUCT_NAME: LocationDesignPreview
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SUPPORTS_MACCATALYST: NO

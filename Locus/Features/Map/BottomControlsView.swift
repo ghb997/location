@@ -1,16 +1,16 @@
 import SwiftUI
 
 struct BottomControlsView: View {
+    @Namespace private var modeSelection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var session: SpoofSession
     @EnvironmentObject private var pairing: PairingStore
     @Binding var showSettings: Bool
     @Binding var showPlaces: Bool
 
-    private let trayShape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-
     var body: some View {
-        LocusGlassContainer(spacing: 16) {
+        LocusGlassContainer(spacing: 10) {
             VStack(spacing: 12) {
                 if session.joystickActive {
                     JoystickPad { vector in
@@ -26,93 +26,52 @@ struct BottomControlsView: View {
     }
 
     private var controls: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                ForEach(TravelMode.allCases) { mode in
-                    let selected = session.travelMode == mode
-                    Button {
-                        session.travelMode = mode
-                    } label: {
-                        Image(systemName: mode.icon)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(selected ? .black : .primary)
-                            .frame(minWidth: 48, minHeight: 44)
-                            .background(
-                                Capsule().fill(selected ? LocusTheme.accent : Color.primary.opacity(0.08))
-                            )
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(mode.title)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                }
-                Spacer(minLength: 0)
-            }
-
-            if session.currentRoute != nil { RoutePlaybackControls() }
-            HStack(spacing: 12) {
-                trayIcon("gearshape.fill") { showSettings = true }
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                modeSelector
+                IconButton(systemName: "gearshape.fill") { showSettings = true }
                     .accessibilityLabel(L10n.tr("Settings"))
-                trayIcon("star.fill") { showPlaces = true }
+                IconButton(systemName: "star.fill") { showPlaces = true }
                     .accessibilityLabel(L10n.tr("Places"))
-
-                Button {
-                    if session.joystickActive {
-                        session.stopJoystick()
-                    } else {
-                        session.startJoystick(pairing: pairing)
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "dot.circle.and.hand.point.up.left.fill")
-                        Text(session.joystickActive ? L10n.tr("On") : L10n.tr("Joy"))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(session.joystickActive ? .black : .primary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(session.joystickActive ? LocusTheme.accentSecondary : Color.primary.opacity(0.08))
-                    )
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .disabled(!session.canWrite)
             }
+
+            if session.currentRoute != nil {
+                RoutePlaybackControls()
+                    .padding(16)
+                    .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+
+            // Each action has its own glass surface, so the map can refract through
+            // the spaces between controls instead of a second glass backing tray.
             actionLayout {
+                joystickButton
                 Button {
                     if let pin = session.pin { session.teleport(to: pin, pairing: pairing) }
                 } label: {
                     Text(L10n.tr("Go to pin"))
-                        .font(.headline)
-                        .foregroundStyle(.black)
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 50)
-                        .padding(.horizontal, 14)
-                        .background(Capsule().fill(LocusTheme.accent))
                 }
-                .buttonStyle(.plain)
+                .locusActionStyle(prominent: true, tint: LocusTheme.accent)
                 .disabled(!session.canWrite || session.pin == nil)
                 if session.canStop {
                     Button { session.stop(pairing: pairing) } label: {
                         Text(L10n.tr("Stop"))
-                            .font(.headline).foregroundStyle(.white)
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity)
                             .frame(minHeight: 50)
-                            .padding(.horizontal, 14)
-                            .background(Capsule().fill(LocusTheme.danger))
                     }
-                    .buttonStyle(.plain)
+                    .locusActionStyle(prominent: true, tint: LocusTheme.danger)
                     .disabled(!session.canRetryRestore)
                 }
             }
         }
-        .padding(16)
-        .locusGlass(.regular, in: trayShape)
-        // Whole tray absorbs taps so near-misses don't fall through to the map.
-        .contentShape(trayShape)
+        .foregroundStyle(LocusTheme.ink)
+        .contentShape(Rectangle())
+        .onTapGesture { /* Absorb near-misses between actions instead of dropping a map pin. */ }
     }
 
     private var actionLayout: AnyLayout {
@@ -121,15 +80,56 @@ struct BottomControlsView: View {
             : AnyLayout(HStackLayout(spacing: 10))
     }
 
-    private func trayIcon(_ systemName: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.primary.opacity(0.08)))
-                .contentShape(Circle())
+    private var modeSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(TravelMode.allCases) { mode in
+                let selected = session.travelMode == mode
+                Button {
+                    withAnimation(reduceMotion ? nil : .smooth(duration: 0.24)) { session.travelMode = mode }
+                } label: {
+                    Image(systemName: mode.icon)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(selected ? LocusTheme.accent : LocusTheme.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .background {
+                            if selected {
+                                Capsule().fill(LocusTheme.accent.opacity(0.14))
+                                    .overlay(Capsule().stroke(LocusTheme.accent.opacity(0.22), lineWidth: 1))
+                                    .matchedGeometryEffect(id: "travel-mode", in: modeSelection)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.title)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
         }
-        .buttonStyle(.plain)
+        .padding(4)
+        .locusGlass(.regular, in: Capsule())
+    }
+
+    private var joystickButton: some View {
+        Button {
+            if session.joystickActive {
+                session.stopJoystick()
+            } else {
+                session.startJoystick(pairing: pairing)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "dot.circle.and.hand.point.up.left.fill")
+                Text(session.joystickActive ? L10n.tr("On") : L10n.tr("Joy"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 50)
+        }
+        .locusActionStyle(prominent: session.joystickActive, tint: LocusTheme.accentSecondary)
+        .disabled(!session.canWrite)
+        .accessibilityLabel(L10n.tr("Movement joystick"))
+        .accessibilityAddTraits(session.joystickActive ? .isSelected : [])
     }
 }

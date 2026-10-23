@@ -68,7 +68,8 @@ struct SetupFlowView: View {
             .frame(maxWidth: 608)
             .padding(.bottom, 8)
         }
-        .preferredColorScheme(.dark)
+        .foregroundStyle(LocusTheme.ink)
+        .preferredColorScheme(.light)
         .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.86), value: step)
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { appear = true }

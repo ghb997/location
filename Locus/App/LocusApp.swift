@@ -31,7 +31,8 @@ struct LocusApp: App {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { session.handleForeground(pairing: pairing) }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
+            .tint(LocusTheme.accent)
             .onOpenURL { url in
                 handleIncoming(url)
             }

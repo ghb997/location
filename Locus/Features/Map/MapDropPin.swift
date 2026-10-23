@@ -19,12 +19,10 @@ struct MapDropPin: View {
                     Label(L10n.tr("Remove Pin"), systemImage: "trash.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(LocusTheme.danger)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
                         .frame(minHeight: 44)
                 }
-                .buttonStyle(.plain)
-                .locusGlass(.interactive, in: Capsule())
+                .locusActionStyle(tint: LocusTheme.danger)
                 .contentShape(Capsule())
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
             }
@@ -34,7 +32,7 @@ struct MapDropPin: View {
                 .foregroundStyle(.white, LocusTheme.accentSecondary)
                 .font(.system(size: isDragging ? 44 : 36))
                 .frame(minWidth: 44, minHeight: 44)
-                .shadow(color: .black.opacity(0.35), radius: isDragging ? 8 : 4, y: 2)
+                .shadow(color: LocusTheme.ink.opacity(0.18), radius: isDragging ? 8 : 4, y: 2)
                 .scaleEffect(isDragging && !reduceMotion ? 1.12 : 1)
         }
         // Keep the pin tip on the coordinate while the menu sits above.

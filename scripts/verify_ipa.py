@@ -22,6 +22,7 @@ def verify(path):
         info_path = candidates[0]
         app = info_path.removesuffix("Info.plist")
         info = plistlib.loads(archive.read(info_path))
+        assert info["UIUserInterfaceStyle"] == "Light"
         assert info["CFBundleDisplayName"] == "location"
         assert info["CFBundleName"] == "location"
         assert info["CFBundleIdentifier"] == "com.ghb997.location"

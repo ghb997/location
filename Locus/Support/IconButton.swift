@@ -12,7 +12,7 @@ struct IconButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.primary)
+        .foregroundStyle(LocusTheme.ink)
         .locusGlass(.interactive, in: Circle())
     }
 }

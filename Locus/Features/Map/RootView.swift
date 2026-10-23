@@ -9,16 +9,16 @@ struct RootView: View {
     var body: some View {
         // Bottom chrome is a sibling overlay aligned to the bottom — no full-screen
         // Spacer layer that can steal / pass map taps through the tray.
+        GeometryReader { geometry in
         ZStack(alignment: .bottom) {
             MapHomeView()
 
-            BottomControlsView(
-                showSettings: $showSettings,
-                showPlaces: $showPlaces
-            )
+            MapBottomChrome(availableHeight: geometry.size.height,
+                showSettings: $showSettings, showPlaces: $showPlaces)
             .frame(maxWidth: 540)
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
+        }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()

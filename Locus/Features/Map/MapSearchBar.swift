@@ -9,10 +9,14 @@ struct MapSearchBar: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LocusTheme.accent)
+                .frame(width: 32, height: 32)
+                .background(LocusTheme.accent.opacity(0.09), in: Circle())
                 .accessibilityHidden(true)
             TextField(L10n.tr("Search places"), text: $searchText)
                 .textInputAutocapitalization(.words)
+                .foregroundStyle(LocusTheme.ink)
+                .tint(LocusTheme.accent)
                 .focused(searchFocused)
                 .submitLabel(.search)
                 .onSubmit {
@@ -43,9 +47,10 @@ struct MapSearchBar: View {
                 .frame(minWidth: 44, minHeight: 44)
             }
         }
-        .padding(.leading, 18)
+        .padding(.leading, 12)
         .padding(.trailing, 8)
-        .frame(minHeight: 54)
-        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.vertical, 4)
+        .frame(minHeight: 56)
+        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 }

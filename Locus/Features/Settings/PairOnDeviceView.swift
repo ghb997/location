@@ -11,6 +11,7 @@ struct PairOnDeviceView: View {
     @EnvironmentObject private var pairing: PairingStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @ScaledMetric(relativeTo: .largeTitle) private var pinSize: CGFloat = 48
 
     @EnvironmentObject private var host: PairOnDeviceService
 
@@ -55,28 +56,32 @@ struct PairOnDeviceView: View {
 
     private var scrollContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if mode == .sheet {
-                    header
-                } else {
-                    embeddedIntro
+            LocusGlassContainer(spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
+                    if mode == .sheet {
+                        header
+                    } else {
+                        embeddedIntro
+                    }
+
+                    steps
+
+                    statusCard
+                    if let message = host.audioStatusMessage {
+                        Label(message, systemImage: "speaker.slash")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+
+                    if mode == .sheet {
+                        tipCard
+                    }
+
+                    actions
                 }
-
-                steps
-
-                statusCard
-                if let message = host.audioStatusMessage {
-                    Label(message, systemImage: "speaker.slash")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-
-                if mode == .sheet {
-                    tipCard
-                }
-
-                actions
+                .frame(maxWidth: 560)
+                .padding(mode == .embedded ? 16 : 20)
+                .frame(maxWidth: .infinity)
             }
-            .padding(mode == .embedded ? 16 : 20)
         }
     }
 
@@ -119,7 +124,7 @@ struct PairOnDeviceView: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(n)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
                 .background(LocusTheme.accent, in: Circle())
             Text(text)
@@ -169,10 +174,12 @@ struct PairOnDeviceView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text(pin)
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .font(.system(size: pinSize, weight: .bold, design: .rounded))
                     .tracking(10)
                     .monospacedDigit()
                     .foregroundStyle(LocusTheme.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.45)
                     .textSelection(.enabled)
                 Text(L10n.tr("Second prompt only — after your unlock passcode."))
                     .font(.caption)
@@ -211,37 +218,19 @@ struct PairOnDeviceView: View {
     private var actions: some View {
         switch host.phase {
         case .idle, .failed:
-            Button {
+            SetupPrimaryButton(title: host.phase == .idle ? L10n.tr("Start pairing") : L10n.tr("Try again")) {
                 host.acknowledgeFailure()
                 host.start(pairingStore: pairing)
-            } label: {
-                Text(host.phase == .idle ? L10n.tr("Start pairing") : L10n.tr("Try again"))
-                    .font(.headline)
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Capsule().fill(LocusTheme.accent))
-                    .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
             .disabled(host.isWorkerRunning)
         case .succeeded:
-            Button {
+            SetupPrimaryButton(title: mode == .embedded ? L10n.tr("Continue") : L10n.tr("Done")) {
                 if let onFinished {
                     onFinished()
                 } else {
                     dismiss()
                 }
-            } label: {
-                Text(mode == .embedded ? L10n.tr("Continue") : L10n.tr("Done"))
-                    .font(.headline)
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Capsule().fill(LocusTheme.accent))
-                    .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
         case .advertising, .deviceConnected, .awaitingPIN:
             VStack(spacing: 12) {
                 Button(L10n.tr("Cancel pairing"), role: .cancel) { host.cancel() }

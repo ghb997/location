@@ -143,7 +143,7 @@ struct MapHomeView: View {
                     placePin(at: point, proxy: proxy)
                 }
             }
-            .background(Color.black.ignoresSafeArea())
+            .background(LocusTheme.canvas.ignoresSafeArea())
 
             topChrome
         }

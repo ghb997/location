@@ -4,13 +4,13 @@ struct SetupBackground: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
         ZStack {
-            Color(red: 0.025, green: 0.055, blue: 0.075).ignoresSafeArea()
+            LocusTheme.canvas.ignoresSafeArea()
 
             if !reduceTransparency {
-                // Soft map-adjacent atmosphere (no flat fill).
+                // A light, quiet canvas lets the glass edges pick up color.
                 RadialGradient(
                     colors: [
-                        LocusTheme.accent.opacity(0.22),
+                        Color(red: 0.67, green: 0.91, blue: 0.85).opacity(0.65),
                         Color.clear
                     ],
                     center: .topTrailing,
@@ -21,12 +21,20 @@ struct SetupBackground: View {
 
                 RadialGradient(
                     colors: [
-                        Color(red: 0.12, green: 0.18, blue: 0.28).opacity(0.9),
+                        Color(red: 0.73, green: 0.86, blue: 0.98).opacity(0.65),
                         Color.clear
                     ],
                     center: .bottomLeading,
                     startRadius: 20,
                     endRadius: 380
+                )
+                .ignoresSafeArea()
+
+                RadialGradient(
+                    colors: [Color(red: 1, green: 0.96, blue: 0.88).opacity(0.8), .clear],
+                    center: .topLeading,
+                    startRadius: 20,
+                    endRadius: 340
                 )
                 .ignoresSafeArea()
 
@@ -43,7 +51,7 @@ struct SetupBackground: View {
                             path.addLine(to: CGPoint(x: geo.size.width, y: y))
                         }
                     }
-                    .stroke(Color.white.opacity(0.04), lineWidth: 1)
+                    .stroke(LocusTheme.accent.opacity(0.055), lineWidth: 1)
                 }
                 .ignoresSafeArea()
             }

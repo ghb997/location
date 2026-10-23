@@ -17,7 +17,7 @@ struct SetupWelcomePage: View {
                         .font(.system(size: 60, weight: .light))
                         .foregroundStyle(LocusTheme.accent)
                         .frame(width: 112, height: 112)
-                        .locusGlass(.regular, tint: LocusTheme.accent.opacity(0.12), in: Circle())
+                        .locusGlass(.clear, tint: LocusTheme.accent.opacity(0.08), in: Circle())
                         .accessibilityHidden(true)
                         .opacity(appear ? 1 : 0)
                         .scaleEffect(appear || reduceMotion ? 1 : 0.85)
