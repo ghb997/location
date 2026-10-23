@@ -1,5 +1,22 @@
 import SwiftUI
 
+/// Keep setup usable in landscape, Split View, and accessibility text sizes.
+struct SetupPageScroll<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                content()
+                    .frame(maxWidth: 560)
+                    .frame(minHeight: geometry.size.height)
+                    .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
 struct SetupProgressView: View {
     let step: Int
     let total: Int
@@ -7,8 +24,8 @@ struct SetupProgressView: View {
         HStack(spacing: 8) {
             ForEach(1...total, id: \.self) { index in
                 Capsule()
-                    .fill(index <= step ? LocusTheme.accent : Color.white.opacity(0.12))
-                    .frame(height: 3)
+                    .fill(index <= step ? LocusTheme.accent : Color.primary.opacity(0.12))
+                    .frame(height: 4)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -18,19 +35,34 @@ struct SetupProgressView: View {
 }
 
 struct SetupPrimaryButton: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let title: String
     let action: () -> Void
+
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Capsule().fill(LocusTheme.accent))
-                .contentShape(Capsule())
+        if #available(iOS 26.0, *), !reduceTransparency {
+            Button(action: action) { label }
+                .buttonStyle(.glassProminent)
+                .tint(LocusTheme.accent)
+                .buttonBorderShape(.capsule)
+        } else {
+            Button(action: action) {
+                label.background(Capsule().fill(LocusTheme.accent))
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+    }
+
+    private var label: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(.black)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .contentShape(Capsule())
     }
 }
 
@@ -78,7 +110,7 @@ struct SetupImportPairingCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SetupStepRow(number: 1, text: L10n.tr("On your computer, run idevice_pair and create an RPPairing file."))
-            SetupStepRow(number: 2, text: L10n.tr("AirDrop / Share into Locus, or copy the plist text."))
+            SetupStepRow(number: 2, text: L10n.tr("AirDrop / Share into location, or copy the plist text."))
             SetupStepRow(number: 3, text: L10n.tr("Tap Import, or Paste from clipboard if the picker doesn’t work (LiveContainer)."))
         }
         .padding(18)

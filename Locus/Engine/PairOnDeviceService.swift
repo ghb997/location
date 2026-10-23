@@ -16,6 +16,7 @@ final class PairOnDeviceService: ObservableObject {
     @Published private(set) var pin: String?
     @Published private(set) var debugPort: UInt16?
     @Published private(set) var isWorkerRunning = false
+    @Published private(set) var audioStatusMessage: String?
     var isBusy: Bool { isWorkerRunning }
     private var run: PairRunContext?
     private let attempt = PairingAttemptPolicy()
@@ -37,6 +38,17 @@ final class PairOnDeviceService: ObservableObject {
         phase = .advertising
         pin = nil
         debugPort = nil
+        audioStatusMessage = nil
+        audioKeepAlive.onIssue = { [weak self] issue in
+            guard let self, self.accepts(context) else { return }
+            switch issue {
+            case .interrupted:
+                self.audioStatusMessage = L10n.tr("Pairing audio was interrupted. Keep location open when possible; pairing can continue without audio.")
+            case .unavailable:
+                self.audioStatusMessage = L10n.tr("Pairing audio is unavailable. Keep location open when possible; pairing can continue without audio.")
+            case nil: self.audioStatusMessage = nil
+            }
+        }
         advertiser.onFailure = { [weak self] message in
             guard let self, self.accepts(context) else { return }
             self.cancel(message: L10n.tr("The pairing connection failed. Check Local Network permission and try again after the native listener finishes.") + " " + message)
@@ -143,6 +155,8 @@ final class PairOnDeviceService: ObservableObject {
         advertiser.stop()
         advertiser.onFailure = nil
         endKeepAlive()
+        audioKeepAlive.onIssue = nil
+        audioStatusMessage = nil
     }
 
     private func beginKeepAlive() {
@@ -175,7 +189,7 @@ final class PairOnDeviceService: ObservableObject {
         var outFile: OpaquePointer?
         var altIRK = [UInt8](repeating: 0, count: 16)
         let opaque = Unmanaged.passUnretained(context).toOpaque()
-        let error = pairable_host_accept("Locus", "Mac17,7", 0, pinDisplayTrampoline, opaque,
+        let error = pairable_host_accept("location", "Mac17,7", 0, pinDisplayTrampoline, opaque,
             listeningTrampoline, opaque, connectedTrampoline, opaque, &altIRK, &outFile)
         defer { if let outFile { rp_pairing_file_free(outFile) } }
         if let error { return .failure(copyAndFree(error)) }

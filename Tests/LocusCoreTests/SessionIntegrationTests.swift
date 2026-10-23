@@ -10,6 +10,69 @@ import XCTest
 final class SessionIntegrationTests: XCTestCase {
     private let origin = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
 
+    func testNewManualAndFavoriteTargetRejectLateSearchAndImport() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        let search = rig.session.beginTargetChange()
+        let manual = CLLocationCoordinate2D(latitude: 30, longitude: 120)
+        XCTAssertTrue(rig.session.selectTarget(manual, source: .manual))
+        XCTAssertFalse(rig.session.selectTarget(origin, source: .appleSearch, replacing: search))
+        XCTAssertEqual(rig.session.pin.map(RoutePoint.init), RoutePoint(manual))
+        let imported = rig.session.beginTargetChange()
+        rig.session.selectTarget(origin, source: .legacy)
+        rig.session.teleport(to: origin, pairing: rig.pairing)
+        XCTAssertFalse(rig.session.acceptsTargetChange(imported))
+        await waitFor { rig.session.status == .active }
+        XCTAssertEqual(rig.session.pinSource, .legacy)
+    }
+
+    func testDamagedFavoritesCannotBeOverwrittenThroughSession() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        let damaged = Data("damaged".utf8)
+        rig.defaults.set(damaged, forKey: "locus.favorites")
+        rig.session.reloadPlaces()
+        XCTAssertTrue(rig.session.favoritesNeedRecovery)
+        rig.session.addFavorite(name: "new", coordinate: origin)
+        XCTAssertTrue(rig.session.favorites.isEmpty)
+        XCTAssertEqual(rig.defaults.data(forKey: "locus.favorites"), damaged)
+        XCTAssertNotNil(rig.session.lastError)
+    }
+
+    func testReopenedRouteWaitsForRestorationAndExplicitResume() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        rig.session.draftTrack = RouteTrack(coordinates: [origin, .init(latitude: 31.24, longitude: 121.48)])
+        rig.session.followRoute(rig.session.draftTrack!, pairing: rig.pairing)
+        await waitFor { rig.session.routeState == .playing && rig.clock.pendingCount >= 2 }
+        await advance(rig, by: 0.5)
+        await waitFor { rig.session.routePlayback.completedDistance > 0 }
+        rig.session.pauseRoute()
+        await waitFor { rig.session.routeState == .paused }
+        await rig.session.flushRoutePersistence()
+        let confirmed = rig.session.routePlayback.completedDistance
+        let transport = SessionTestTransport()
+        let reopened = SpoofSession(clock: rig.clock.playbackClock, restorationStore: rig.store, transport: transport,
+            runtime: SessionRuntime(locationKeeper: SessionTestKeeper(), monitorsNetwork: false,
+                sendsNotifications: false, preferences: rig.defaults, targetIP: { "10.7.0.1" }))
+        await waitFor { reopened.currentRoute != nil }
+        XCTAssertEqual(reopened.routeState, .paused)
+        XCTAssertEqual(reopened.routePlayback.completedDistance, confirmed)
+        XCTAssertTrue(transport.writes.isEmpty)
+        reopened.resumeRoute(pairing: rig.pairing)
+        XCTAssertTrue(transport.writes.isEmpty)
+        reopened.stop(pairing: rig.pairing)
+        await waitFor { reopened.status == .idle }
+        XCTAssertEqual(reopened.routeState, .paused)
+        XCTAssertEqual(reopened.routePlayback.completedDistance, confirmed)
+        reopened.resumeRoute(pairing: rig.pairing)
+        await waitFor { reopened.routeState == .playing }
+        XCTAssertEqual(transport.writes.first?.point, rig.session.simulated.map(RoutePoint.init))
+        reopened.stop(pairing: rig.pairing)
+        await waitFor { reopened.status == .idle }
+        await reopened.flushRoutePersistence()
+    }
+
     func testForegroundRecoversAfterRetryExhaustionAndRestartsHeartbeat() async {
         let rig = SessionRig()
         defer { rig.dispose() }

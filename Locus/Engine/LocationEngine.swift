@@ -6,6 +6,19 @@ private struct LocationConnectionContext: Equatable, Sendable {
     let endpoint: TunnelEndpoint
 }
 
+private struct LocationRestoreTarget: Sendable {
+    let pairingPath: String
+    let deviceIP: String
+    init(_ context: LocationConnectionContext) {
+        pairingPath = context.pairingPath
+        deviceIP = context.endpoint.ip
+    }
+    init(pairingPath: String, deviceIP: String) {
+        self.pairingPath = pairingPath
+        self.deviceIP = deviceIP
+    }
+}
+
 private struct NativeLocationResult: Error {
     let error: LocationEngineError?
     let native: NativeTunnelError?
@@ -58,10 +71,14 @@ enum LocationEngine {
         defer { if preparationID == id { preparation = nil; preparationID = nil } }
         do {
             let endpoint = try await task.value
-            guard token == preparationGeneration, !Task.isCancelled else { return .failure(.operationCancelled) }
+            guard token == preparationGeneration, !Task.isCancelled else {
+                TunnelDiagnostics.shared.completed(id: id, error: .operationCancelled)
+                return .failure(.operationCancelled)
+            }
             TunnelDiagnostics.shared.serviceReachable(id: id, endpoint: endpoint)
             return .success(())
         } catch {
+            TunnelDiagnostics.shared.networkFailed(id: id, error: error)
             let error = mapNetworkError(error)
             TunnelDiagnostics.shared.completed(id: id, error: error)
             return .failure(error)
@@ -87,7 +104,7 @@ enum LocationEngine {
         guard gate.canWrite, preparation == nil, !TunnelDiagnostics.shared.isDraining else { return false }
         activeContext = nil
         submittedContext = nil
-        // Native handles remain queue-owned. clearLocked first clears the old
+        // Native handles remain queue-owned. Restoration first clears the old
         // connection, then reconnects using freshly resolved repair settings.
         // lastApplied remains available until a successful clear.
         return true
@@ -107,6 +124,7 @@ enum LocationEngine {
         do { context = try await prepare(pairingPath: pairingPath, deviceIP: deviceIP, diagnosticID: id) }
         catch {
             let result = mapNetworkError(error)
+            TunnelDiagnostics.shared.networkFailed(id: id, error: error)
             TunnelDiagnostics.shared.completed(id: id, error: result)
             return .failure(result)
         }
@@ -125,30 +143,57 @@ enum LocationEngine {
         cancelPendingPreparation()
         let control = NativeRequestControl(seconds: TunnelPolicy.operationSeconds, purpose: .restoration)
         let id = TunnelDiagnostics.shared.begin(stage: .clear)
-        var context = activeContext ?? (gate.count > 0 ? submittedContext : nil)
-        if context == nil, pairingPath != nil || deviceIP != nil {
-            guard let pairingPath, !pairingPath.isEmpty,
-                  FileManager.default.fileExists(atPath: pairingPath), let deviceIP else {
-                gate.releaseStopPreparation()
-                TunnelDiagnostics.shared.completed(id: id, error: .pairingRead)
-                return .failure(.pairingRead)
+        let cached = activeContext ?? (gate.count > 0 ? submittedContext : nil)
+        let target: LocationRestoreTarget?
+        if pairingPath != nil || deviceIP != nil {
+            target = LocationRestoreTarget(pairingPath: pairingPath ?? "", deviceIP: deviceIP ?? "")
+        } else {
+            target = cached.map(LocationRestoreTarget.init)
+        }
+        return await submitRestoration(id: id, target: target, control: control)
+    }
+
+    /// One stop reservation spans native draining, discovery and the final
+    /// clear. A UI timeout never starts a second worker or releases ownership.
+    @MainActor
+    private static func submitRestoration(id: UUID, target: LocationRestoreTarget?,
+                                          control: NativeRequestControl) async -> Result<Void, LocationEngineError> {
+        gate.submit(id: id, kind: .clear)
+        return await withCheckedContinuation { continuation in
+            let completion = OperationCompletion<Result<Void, LocationEngineError>>(continuation)
+            let watchdog = Task { @MainActor in
+                do { try await Task.sleep(nanoseconds: UInt64(control.remainingSeconds * 1e9)) }
+                catch { return }
+                if completion.finish(.failure(.operationTimedOut)) {
+                    gate.timeOut(id: id)
+                    TunnelDiagnostics.shared.timedOut(id: id)
+                }
             }
-            guard TunnelConfig.isValidIP(deviceIP) else {
-                gate.releaseStopPreparation()
-                TunnelDiagnostics.shared.completed(id: id, error: .invalidIP)
-                return .failure(.invalidIP)
-            }
-            do { context = try await prepare(pairingPath: pairingPath, deviceIP: deviceIP, diagnosticID: id) }
-            catch {
-                gate.releaseStopPreparation()
-                let result = mapNetworkError(error)
-                TunnelDiagnostics.shared.completed(id: id, error: result)
-                return .failure(result)
+            Task { @MainActor in
+                let result = await FreshEndpointRestorationPolicy.restore(
+                    NativeRestoreTransport(target: target, id: id, control: control))
+                watchdog.cancel()
+                gate.complete(id: id)
+                activeContext = nil
+                let failure: NativeLocationResult?
+                switch result {
+                case .success: submittedContext = nil; failure = nil
+                case .failure(let error): failure = error
+                }
+                let delivered = completion.finish(failure?.error.map { .failure($0) } ?? .success(()))
+                TunnelDiagnostics.shared.completed(id: id,
+                    error: delivered ? failure?.error : .operationTimedOut, native: failure?.native)
             }
         }
-        let recovery = context
-        return await submit(id: id, context: recovery, isClear: true, control: control) {
-            clearLocked(recovery: recovery, id: id, control: control)
+    }
+
+    @MainActor
+    private static func onNativeQueue<Value>(_ work: @escaping () -> Value) async -> Value {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                configureNativeTimeout()
+                continuation.resume(returning: work())
+            }
         }
     }
 
@@ -286,7 +331,11 @@ enum LocationEngine {
         if let locationSimulation, nativeContext == context {
             report(.set, id: id, endpoint: context.endpoint)
             if let error = location_simulation_set(locationSimulation, latitude, longitude) {
-                _ = failure(error, stage: .set, error: .locationSet); cleanup()
+                let result = failure(error, stage: .set, error: .locationSet)
+                DispatchQueue.main.async {
+                    TunnelDiagnostics.shared.recordFailure(id: id, error: .locationSet, native: result.native)
+                }
+                cleanup()
             } else { lastApplied = context; return .success }
         }
         let connected = connectLocked(context: context, id: id, control: control)
@@ -302,33 +351,75 @@ enum LocationEngine {
         return .success
     }
 
-    private static func clearLocked(recovery: LocationConnectionContext?, id: UUID, control: NativeRequestControl) -> NativeLocationResult {
-        var transport = NativeRestoreTransport(context: recovery ?? lastApplied, id: id, control: control)
-        switch LocationRestorationPolicy.restore(&transport) {
-        case .success: lastApplied = nil; return .success
-        case .failure(let result): return result
-        }
-    }
-
-    private struct NativeRestoreTransport: LocationRestorationTransport {
-        let context: LocationConnectionContext?
+    @MainActor
+    private struct NativeRestoreTransport: FreshEndpointRestorationTransport {
+        let target: LocationRestoreTarget?
         let id: UUID
         let control: NativeRequestControl
-        var hasConnection: Bool { locationSimulation != nil }
-        var canReconnect: Bool { context != nil }
-        mutating func connect() -> Result<Void, NativeLocationResult> {
-            guard let context else { return .success(()) }
-            let result = connectLocked(context: context, id: id, control: control)
-            return result.error.map { _ in .failure(result) } ?? .success(())
-        }
-        mutating func clear() -> Result<Void, NativeLocationResult> {
-            if let stopped = cancelledResult(control) { return .failure(stopped) }
-            report(.clear, id: id)
-            if let error = location_simulation_clear(locationSimulation) {
-                return .failure(failure(error, stage: .clear, error: .locationClear))
+
+        func clearExisting() async -> ExistingRestorationResult<LocationRestoreTarget, NativeLocationResult> {
+            await onNativeQueue {
+                let recovery = target ?? lastApplied.map(LocationRestoreTarget.init)
+                if let locationSimulation {
+                    report(.clear, id: id, endpoint: nativeContext?.endpoint)
+                    if let error = location_simulation_clear(locationSimulation) {
+                        let result = failure(error, stage: .clear, error: .locationClear)
+                        DispatchQueue.main.async {
+                            TunnelDiagnostics.shared.recordFailure(id: id, error: .locationClear, native: result.native)
+                        }
+                        cleanup()
+                        if let recovery { return .reconnect(recovery) }
+                        return .failed(result)
+                    }
+                    cleanup()
+                    lastApplied = nil
+                    return .restored
+                }
+                cleanup()
+                return recovery.map { .reconnect($0) } ?? .restored
             }
-            return .success(())
         }
-        mutating func disconnect() { cleanup() }
+
+        func resolveEndpoint(for target: LocationRestoreTarget) async -> Result<TunnelEndpoint, NativeLocationResult> {
+            guard !target.pairingPath.isEmpty, FileManager.default.fileExists(atPath: target.pairingPath) else {
+                return .failure(NativeLocationResult(error: .pairingRead, native: nil))
+            }
+            guard TunnelConfig.isValidIP(target.deviceIP) else {
+                return .failure(NativeLocationResult(error: .invalidIP, native: nil))
+            }
+            do {
+                // Deliberately bypass prepare's activeContext cache. This runs
+                // after the old clear/cleanup, even if the old write ran late.
+                let endpoint = try await TunnelPreparation.endpoint(deviceIP: target.deviceIP) { stage, endpoint in
+                    TunnelDiagnostics.shared.update(id: id, stage: stage, endpoint: endpoint)
+                }
+                return .success(endpoint)
+            } catch {
+                TunnelDiagnostics.shared.networkFailed(id: id, error: error)
+                return .failure(NativeLocationResult(error: mapNetworkError(error), native: nil))
+            }
+        }
+
+        func connect(target: LocationRestoreTarget, endpoint: TunnelEndpoint) async -> Result<Void, NativeLocationResult> {
+            await onNativeQueue {
+                let context = LocationConnectionContext(pairingPath: target.pairingPath, endpoint: endpoint)
+                let result = connectLocked(context: context, id: id, control: control)
+                if result.error != nil { cleanup(); return .failure(result) }
+                return .success(())
+            }
+        }
+
+        func clearAndDisconnect() async -> Result<Void, NativeLocationResult> {
+            await onNativeQueue {
+                defer { cleanup() }
+                if let stopped = cancelledResult(control) { return .failure(stopped) }
+                report(.clear, id: id, endpoint: nativeContext?.endpoint)
+                if let error = location_simulation_clear(locationSimulation) {
+                    return .failure(failure(error, stage: .clear, error: .locationClear))
+                }
+                lastApplied = nil
+                return .success(())
+            }
+        }
     }
 }

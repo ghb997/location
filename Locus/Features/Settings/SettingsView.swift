@@ -207,7 +207,7 @@ struct SettingsView: View {
                 }
 
                 Section(L10n.tr("Privacy")) {
-                    Text(L10n.tr("Fully on-device. Favorites and recents stay in UserDefaults. No analytics, no accounts, nothing uploaded."))
+                    Text(L10n.tr("Favorites, recents and route progress are stored on this device. Search and road routing send requests to Apple map services. location has no accounts or analytics."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -215,7 +215,7 @@ struct SettingsView: View {
                 Section(L10n.tr("About")) {
                     LabeledContent(L10n.tr("Version"), value: appVersion)
                     LabeledContent(L10n.tr("Engine"), value: L10n.tr("idevice DVT location simulation"))
-                    Text(L10n.tr("Locus is free and open source (MIT). Location injection uses the MIT-licensed idevice FFI."))
+                    Text(L10n.tr("location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -224,7 +224,7 @@ struct SettingsView: View {
                     Button {
                         showNameEasterEgg = true
                     } label: {
-                        Text(L10n.tr("locus, n. — a place. From the Latin for where you are."))
+                        Text(L10n.tr("location · A place of your choosing."))
                             .font(.footnote.italic())
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -236,6 +236,7 @@ struct SettingsView: View {
                     .listRowSeparator(.hidden)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle(L10n.tr("Settings"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -250,8 +251,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCoordinates) {
                 CoordinateEntrySheet { coordinate in
-                    session.pin = coordinate
-                    session.pinSource = .manual
+                    session.selectTarget(coordinate, source: .manual)
                     dismiss()
                 }
             }
@@ -278,7 +278,7 @@ struct SettingsView: View {
             .fullScreenCover(isPresented: $showNameEasterEgg) {
                 LocusEasterEggView()
             }
-            .alert("Locus", isPresented: Binding(
+            .alert("location", isPresented: Binding(
                 get: { session.lastError != nil },
                 set: { if !$0 { session.lastError = nil } }
             )) {
@@ -298,6 +298,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .locusSheetBackdrop()
     }
 
     @discardableResult

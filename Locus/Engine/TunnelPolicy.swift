@@ -34,7 +34,7 @@ enum TunnelPolicy {
     /// messages may contain addresses, file paths or pairing identifiers.
     static func exportSummary(stage: TunnelStage?, source: TunnelEndpoint.Source?, port: UInt16?,
                               error: NativeTunnelError?, draining: Bool) -> String {
-        var lines = ["Locus connection diagnostic", "Stage: \(stage?.rawValue ?? "none")",
+        var lines = ["location connection diagnostic", "Stage: \(stage?.rawValue ?? "none")",
                      "Source: \(source?.rawValue ?? "none")", "Port: \(port.map(String.init) ?? "none")",
                      "Native operation pending: \(draining)"]
         if let error {

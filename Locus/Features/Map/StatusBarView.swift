@@ -20,19 +20,60 @@ struct StatusBarView: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle().fill(session.status == .active ? LocusTheme.statusGood : LocusTheme.statusWarn)
-                .frame(width: 8, height: 8)
-            Text(title).font(.subheadline.weight(.semibold))
-            Spacer(minLength: 4)
-            if session.status == .active, let point = session.simulated {
-                Text(String(format: "%.4f, %.4f", point.latitude, point.longitude))
-                    .font(.caption.monospaced()).foregroundStyle(.secondary)
-                    .lineLimit(1).minimumScaleFactor(0.7)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                statusLabel
+                Spacer(minLength: 8)
+                coordinateLabel
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                statusLabel
+                coordinateLabel.padding(.leading, 24)
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .locusGlass(.clear, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+
+    private var statusLabel: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 9) {
+            Image(systemName: statusSymbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(statusColor)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var coordinateLabel: some View {
+        if session.status == .active, let point = session.simulated {
+            Text(String(format: "%.4f, %.4f", point.latitude, point.longitude))
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+    }
+
+    private var statusSymbol: String {
+        if (session.restorationRequired && session.status == .idle) || session.status.isDropped {
+            return "exclamationmark.triangle.fill"
+        }
+        switch session.status {
+        case .active: return "location.fill"
+        case .connecting, .reconnecting, .stopping: return "arrow.triangle.2.circlepath"
+        default: return "circle.dotted"
+        }
+    }
+
+    private var statusColor: Color {
+        if (session.restorationRequired && session.status == .idle) || session.status.isDropped {
+            return LocusTheme.statusWarn
+        }
+        return session.status == .active ? LocusTheme.statusGood : LocusTheme.accent
     }
 }

@@ -14,6 +14,7 @@ struct SetupFlowView: View {
     @State private var showImporter = false
     @State private var localDevVPNInstalled = LocalDevVPN.isInstalled
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum Step: Int, CaseIterable {
         case welcome
@@ -45,27 +46,32 @@ struct SetupFlowView: View {
                     case .welcome:
                         SetupWelcomePage(appear: appear, supportsOnDevicePairing: supportsOnDevicePairing) {
                             SetupGate.markInProgress()
-                            withAnimation { step = .pairing }
+                            move(to: .pairing)
                         }
                     case .pairing:
-                        pairingPage
+                        if supportsOnDevicePairing {
+                            pairingPage
+                        } else {
+                            SetupPageScroll { pairingPage }
+                        }
                     case .vpn:
                         SetupVPNPage(localDevVPNInstalled: localDevVPNInstalled, onFinished: onFinished)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(step)
-                .transition(.asymmetric(
+                .transition(reduceMotion ? .opacity : .asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
             }
+            .frame(maxWidth: 608)
             .padding(.bottom, 8)
         }
         .preferredColorScheme(.dark)
-        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: step)
+        .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.86), value: step)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.7)) { appear = true }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { appear = true }
             localDevVPNInstalled = LocalDevVPN.isInstalled
         }
         .onChange(of: scenePhase) { _, phase in
@@ -81,7 +87,7 @@ struct SetupFlowView: View {
         .onChange(of: pairing.hasPairingFile) { _, hasFile in
             if hasFile, step == .welcome || step == .pairing {
                 SetupGate.markInProgress()
-                withAnimation { step = .vpn }
+                move(to: .vpn)
             }
         }
         .sheet(isPresented: $showImporter) {
@@ -90,7 +96,7 @@ struct SetupFlowView: View {
                     showImporter = false
                     do {
                         try pairing.importPairing(from: url)
-                        withAnimation { step = .vpn }
+                        move(to: .vpn)
                     } catch {
                         session.lastError = error.localizedDescription
                     }
@@ -99,7 +105,7 @@ struct SetupFlowView: View {
             )
             .ignoresSafeArea()
         }
-        .alert("Locus", isPresented: Binding(
+        .alert("location", isPresented: Binding(
             get: { session.lastError != nil },
             set: { if !$0 { session.lastError = nil } }
         )) {
@@ -111,14 +117,20 @@ struct SetupFlowView: View {
 
     // MARK: - Pairing
 
+    private func move(to nextStep: Step) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.86)) {
+            step = nextStep
+        }
+    }
+
     private var pairingPage: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.tr("Connect this iPhone"))
                     .font(.title.weight(.bold))
                 Text(supportsOnDevicePairing
-                     ? L10n.tr("Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.")
-                     : L10n.tr("Import a pairing file from your computer — Locus uses it to set your location securely on this device."))
+                     ? L10n.tr("location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.")
+                     : L10n.tr("Import a pairing file from your computer — location uses it to set your location securely on this device."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -129,13 +141,13 @@ struct SetupFlowView: View {
 
             if supportsOnDevicePairing {
                 PairOnDeviceView(mode: .embedded) {
-                    withAnimation { step = .vpn }
+                    move(to: .vpn)
                 }
                 .environmentObject(pairing)
             } else {
                 SetupImportPairingCard()
                     .padding(.horizontal, 24)
-                Spacer()
+                Spacer(minLength: 28)
                 VStack(spacing: 12) {
                     SetupPrimaryButton(title: L10n.tr("Import pairing file")) {
                         showImporter = true
@@ -143,7 +155,7 @@ struct SetupFlowView: View {
                     Button {
                         do {
                             try pairing.importPairingFromClipboard()
-                            withAnimation { step = .vpn }
+                            move(to: .vpn)
                         } catch {
                             session.lastError = error.localizedDescription
                         }

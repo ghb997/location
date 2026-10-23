@@ -22,7 +22,7 @@ struct PairOnDeviceView: View {
             if mode == .sheet {
                 NavigationStack {
                     scrollContent
-                        .background(Color.black.ignoresSafeArea())
+                        .locusSheetBackdrop()
                         .navigationTitle(L10n.tr("Pair on this iPhone"))
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
@@ -65,6 +65,10 @@ struct PairOnDeviceView: View {
                 steps
 
                 statusCard
+                if let message = host.audioStatusMessage {
+                    Label(message, systemImage: "speaker.slash")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
 
                 if mode == .sheet {
                     tipCard

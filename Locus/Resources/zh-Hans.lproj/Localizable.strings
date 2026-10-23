@@ -1,7 +1,7 @@
-// Locus interface, errors, notifications and accessibility.
+// location interface, errors, notifications and accessibility.
 "A short setup — about two minutes." = "跟随引导，完成配对与连接。";
 "About" = "关于";
-"AirDrop / Share into Locus, or copy the plist text." = "通过隔空投送或共享将文件导入 Locus，也可以复制 plist 文件全文。";
+"AirDrop / Share into Locus, or copy the plist text." = "通过隔空投送或共享将文件导入 location，也可以复制 plist 文件全文。";
 "Allow notifications — the code can appear as a banner over Settings." = "允许通知，以便在系统设置中通过通知横幅查看配对码。";
 "Build or draw a route first." = "请先规划或绘制一条路线。";
 "Build walk/drive route on roads" = "规划步行／驾车路线";
@@ -36,7 +36,7 @@
 "End" = "终点";
 "Engine" = "定位引擎";
 "Enter this code in Settings" = "在系统设置中输入此配对码";
-"Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code." = "先输入 iPhone 解锁密码。在下一次提示中输入 Locus 显示的 6 位配对码。";
+"Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code." = "先输入 iPhone 解锁密码。在下一次提示中输入 location 显示的 6 位配对码。";
 "Export GPX" = "导出 GPX";
 "Failed to clear simulated location." = "未能清除模拟定位。请重试；如仍未恢复，可重启 iPhone。";
 "Failed to set simulated coordinates." = "设置模拟坐标失败，请检查隧道连接。";
@@ -56,29 +56,29 @@
 "If the code isn’t here yet" = "还没看到配对码？";
 "Import GPX" = "导入 GPX";
 "Import RPPairing file…" = "导入 RPPairing 文件…";
-"Import a pairing file from your computer — Locus uses it to set your location securely on this device." = "从电脑导入配对文件，Locus 将使用它连接本机的开发者定位服务。";
-"Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste." = "请导入 idevice_pair 生成的 RPPairing 文件，SideStore 的 lockdown 配对文件不适用。如果无法选择文件（LiveContainer 中较常见），请开启此应用的 Fix File Picker，或将文件共享到 LiveContainer → Locus，也可以复制 plist 全文后粘贴。";
+"Import a pairing file from your computer — Locus uses it to set your location securely on this device." = "从电脑导入配对文件，location 将使用它连接本机的开发者定位服务。";
+"Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste." = "请导入 idevice_pair 生成的 RPPairing 文件，SideStore 的 lockdown 配对文件不适用。如果无法选择文件（LiveContainer 中较常见），请开启此应用的 Fix File Picker，或将文件共享到 LiveContainer → location，也可以复制 plist 全文后粘贴。";
 "Import an RPPairing file in Settings first." = "请先在设置中导入 RPPairing 配对文件。";
 "Import pairing file" = "导入配对文件";
-"In Developer Mode tap Pair with Locus → Pair." = "在开发者模式中选择“与 Locus 配对”，然后点击“配对”。";
+"In Developer Mode tap Pair with Locus → Pair." = "在开发者模式中选择“与 location 配对”，然后点击“配对”。";
 "Install" = "安装";
 "Installed" = "已安装";
 "Interrupted" = "已中断";
 "I’ve connected it — continue" = "已连接，继续";
 "Joy" = "摇杆";
-"Keep Locus open. You’ll leave briefly for Settings, then come back with a code." = "请让 Locus 保持运行。稍后切换到系统设置完成配对，再返回查看配对码。";
-"Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with Locus” vanishes, stop/start pairing and reopen Developer Mode." = "在开发者模式中确认时，请保持 Locus 在后台运行，不要强制退出。如果“与 Locus 配对”消失，请重新开始配对并重新打开开发者模式。";
-"LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN 会创建本机隧道，让 Locus 连接手机的定位服务。安装并开启后，即可开始修改定位。";
-"LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here." = "已安装 LocalDevVPN。请打开并开启隧道，然后返回 Locus。";
+"Keep Locus open. You’ll leave briefly for Settings, then come back with a code." = "请让 location 保持运行。稍后切换到系统设置完成配对，再返回查看配对码。";
+"Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with Locus” vanishes, stop/start pairing and reopen Developer Mode." = "在开发者模式中确认时，请保持 location 在后台运行，不要强制退出。如果“与 location 配对”消失，请重新开始配对并重新打开开发者模式。";
+"LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN 会创建本机隧道，让 location 连接手机的定位服务。安装并开启后，即可开始修改定位。";
+"LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here." = "已安装 LocalDevVPN。请打开并开启隧道，然后返回 location。";
 "LocalDevVPN is on this iPhone." = "此 iPhone 已安装 LocalDevVPN。";
-"Locus Route" = "Locus 路线";
-"Locus advertises a pairable host. iOS connects from Developer Mode, then Locus shows a 6-digit code for you to type." = "Locus 会广播可配对的主机。在系统开发者模式中连接后，Locus 将显示需要输入的 6 位配对码。";
-"Locus connected" = "Locus 已连接";
-"Locus is free and open source (MIT). Location injection uses the MIT-licensed idevice FFI." = "Locus 是采用 MIT 许可的免费开源项目，定位功能基于 idevice FFI。此版本由 ghb997 维护中文适配与改进，原作者为 ChrisMack32。";
-"Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "Locus 需要先完成一次配对，才能修改定位。请在系统设置中输入配对码确认。";
-"Locus paired" = "Locus 配对成功";
-"Locus pairing code" = "Locus 配对码";
-"Locus spoof dropped" = "Locus 定位模拟已中断";
+"Locus Route" = "location 路线";
+"Locus advertises a pairable host. iOS connects from Developer Mode, then Locus shows a 6-digit code for you to type." = "location 会广播可配对的主机。在系统开发者模式中连接后，location 将显示需要输入的 6 位配对码。";
+"Locus connected" = "location 已连接";
+"Locus is free and open source (MIT). Location injection uses the MIT-licensed idevice FFI." = "location 基于 ChrisMack32 的开源项目 Locus（MIT 许可），由 ghb997 维护中文适配与改进。定位模拟使用同为 MIT 许可的 idevice FFI。";
+"Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location 需要先完成一次配对，才能修改定位。请在系统设置中输入配对码确认。";
+"Locus paired" = "location 配对成功";
+"Locus pairing code" = "location 配对码";
+"Locus spoof dropped" = "location 定位模拟已中断";
 "Map pin" = "地图标记";
 "Movement joystick" = "移动摇杆";
 "Name" = "名称";
@@ -97,7 +97,7 @@
 "On your computer, run idevice_pair and create an RPPairing file." = "在电脑上运行 idevice_pair，生成 RPPairing 配对文件。";
 "One more app" = "再安装一个应用";
 "Open LocalDevVPN" = "打开 LocalDevVPN";
-"Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair." = "打开系统设置 › 隐私与安全性 › 开发者模式 › 与 Locus 配对，然后点击“配对”。";
+"Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair." = "打开系统设置 › 隐私与安全性 › 开发者模式 › 与 location 配对，然后点击“配对”。";
 "Open it and turn the VPN on. Leave the default IP alone." = "打开应用并开启 VPN，保留默认 IP 即可。";
 "Pair on this iPhone" = "在此 iPhone 上配对";
 "Paired" = "配对成功";
@@ -144,7 +144,7 @@
 "Stopping…" = "正在停止…";
 "Tap Import, or Paste from clipboard if the picker doesn’t work (LiveContainer)." = "点击“导入配对文件”。如果文件选择器不可用（如 LiveContainer），可从剪贴板粘贴。";
 "Tap Start pairing and allow Local Network + Location when asked." = "点击“开始配对”，并在提示时允许本地网络和定位权限。";
-"Tap below to open it and start the tunnel. You’ll bounce back to Locus." = "点击下方按钮，打开应用并启动隧道，然后返回 Locus。";
+"Tap below to open it and start the tunnel. You’ll bounce back to Locus." = "点击下方按钮，打开应用并启动隧道，然后返回 location。";
 "Tap the map to drop a pin first." = "请先点击地图放置标记。";
 "Tap to show remove. Touch and hold to drag." = "轻点可显示移除按钮，长按可拖动标记。";
 "Teleport" = "修改定位";
@@ -165,7 +165,7 @@
 "Use drawn path from map" = "使用地图上绘制的路线";
 "Version" = "版本";
 "Waiting for Settings…" = "等待系统设置连接…";
-"Waiting for iOS to connect… don’t force-quit Locus." = "正在等待 iOS 连接，请勿强制退出 Locus。";
+"Waiting for iOS to connect… don’t force-quit Locus." = "正在等待 iOS 连接，请勿强制退出 location。";
 "Walk" = "步行";
 "close enough" = "差不多也是“蝗虫”呢";
 "iPhone connected" = "iPhone 已连接";
@@ -177,7 +177,7 @@
 
 /* Connection, route and coordinate improvements */
 "A previous simulation may still be active. Restore the system location before starting again." = "上一次定位模拟可能仍在生效。请先恢复系统定位，再重新开始。";
-"Allow Local Network access for Locus in Settings, then check the connection again." = "请在系统设置中允许 Locus 访问本地网络，然后重新检测连接。";
+"Allow Local Network access for Locus in Settings, then check the connection again." = "请在系统设置中允许 location 访问本地网络，然后重新检测连接。";
 "Apply coordinate correction" = "应用坐标修正";
 "Approximate shift: %.0f m" = "预计移动距离：%.0f 米";
 "Background and system location" = "后台运行与系统定位";
@@ -296,7 +296,7 @@
 "Accuracy: ±%.0f m" = "精度：±%.0f 米";
 "The restoration record could not be read. Check the pairing file and restore the system location before starting." = "无法读取恢复记录。开始前请检查配对文件并恢复系统定位。";
 "Preparing route…" = "正在准备路线…";
-"Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "后台定位为可选功能。可在 Locus 设置中开启并授予“始终”定位权限，帮助切换到 iOS 设置时维持配对。";
+"Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "后台定位为可选功能。可在 location 设置中开启并授予“始终”定位权限，帮助切换到 iOS 设置时维持配对。";
 "The native pairing listener returned an invalid port." = "底层配对监听返回了无效端口。";
 "The pairing connection failed. Check Local Network permission and try again after the native listener finishes." = "配对连接失败。请检查本地网络权限，等待底层监听结束后重试。";
 
@@ -314,3 +314,33 @@
 "Getting a fresh system location…" = "正在获取新的系统定位…";
 "The system returned a cached or unavailable location. Retrying…" = "系统返回了缓存或不可用的定位，正在重试…";
 "Getting a fresh system location timed out. Tap Refresh system location to try again." = "获取新的系统定位已超时。请点击“刷新系统定位”重试。";
+
+/* 1.2.0 location, recovery, route persistence and glass accessibility */
+"AirDrop / Share into location, or copy the plist text." = "通过隔空投送或共享将文件导入 location，也可以复制 plist 文件全文。";
+"Drag to move. Release to hold position." = "拖动以移动，松开后保持当前位置。";
+"Favorites need recovery" = "收藏需要恢复";
+"Favorites, recents and route progress are stored on this device. Search and road routing send requests to Apple map services. location has no accounts or analytics." = "收藏、最近记录和路线进度保存在本机。地图显示、地点搜索和道路规划会向 Apple 地图服务发送请求。location 不设账号，也不收集使用情况统计。";
+"Import a pairing file from your computer — location uses it to set your location securely on this device." = "从电脑导入配对文件，location 将使用它连接本机的开发者定位服务。";
+"LocalDevVPN creates a private tunnel location uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN 会创建本机隧道，让 location 连接手机的定位服务。安装并开启后，即可开始修改定位。";
+"LocalDevVPN is installed. Open it to turn on the private tunnel location needs, then come back here." = "已安装 LocalDevVPN。请打开并开启隧道，然后返回 location。";
+"No valid saved-place backup is available. Export the original data for recovery." = "没有可用的地点备份。请导出原始数据，以便尝试恢复。";
+"Pairing audio is unavailable. Keep location open when possible; pairing can continue without audio." = "配对保活音频不可用。请尽量保持 location 在前台运行；配对仍可继续。";
+"Pairing audio was interrupted. Keep location open when possible; pairing can continue without audio." = "配对保活音频被中断。请尽量保持 location 在前台运行；配对仍可继续。";
+"Prepare recovery export" = "准备导出恢复文件";
+"Preserve original and start new list" = "保留原始数据并新建列表";
+"Recents need recovery" = "最近记录需要恢复";
+"Restore backup" = "恢复备份";
+"Restore saved-place backup?" = "恢复地点备份？";
+"Routes reopen paused at their last confirmed progress." = "重新打开应用时，路线将停留在最后确认的进度，等待你继续。";
+"Saved places could not be read. The original data is protected. Open Places to export or recover it." = "无法读取已保存的地点，原始数据已受到保护。请打开“地点”页面导出或恢复。";
+"Share saved-place recovery file" = "分享地点恢复文件";
+"Some saved route data could not be read. Review the restored route before continuing." = "部分已保存的路线数据无法读取。请核对恢复的路线后再继续。";
+"Start a new list" = "新建列表";
+"Start a new saved-place list?" = "新建地点列表？";
+"Tap below to open it and start the tunnel. You’ll return to location." = "点击下方按钮，打开应用并启动隧道，然后返回 location。";
+"The damaged original is kept in recovery storage. Export it first if you want a separate copy." = "损坏的原始数据会保留在恢复存储中。如需另存一份，请先导出。";
+"The damaged original is preserved. The list will return to the last readable backup." = "损坏的原始数据会继续保留。列表将恢复到最近一次可读取的备份。";
+"This export contains your saved names and coordinates." = "导出的文件包含你保存的地点名称和坐标。";
+"location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI." = "location 基于 ChrisMack32 的开源项目 Locus（MIT 许可），由 ghb997 维护中文适配与改进。定位模拟使用同为 MIT 许可的 idevice FFI。";
+"location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location 需要先完成一次配对，才能修改定位。请在系统设置中输入配对码确认。";
+"location · A place of your choosing." = "location · 选择你想去的地方。";

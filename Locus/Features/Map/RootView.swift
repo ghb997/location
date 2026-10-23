@@ -16,6 +16,7 @@ struct RootView: View {
                 showSettings: $showSettings,
                 showPlaces: $showPlaces
             )
+            .frame(maxWidth: 540)
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
         }
@@ -25,7 +26,7 @@ struct RootView: View {
         .sheet(isPresented: $showPlaces) {
             PlacesView()
         }
-        .alert("Locus", isPresented: Binding(
+        .alert("location", isPresented: Binding(
             get: { session.lastError != nil && !showSettings && !showPlaces },
             set: { if !$0 { session.lastError = nil } }
         )) {

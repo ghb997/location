@@ -8,11 +8,11 @@ struct IconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.body.weight(.semibold))
-                .frame(width: 44, height: 44)
+                .frame(width: 48, height: 48)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .locusGlass(.interactive, in: Circle())
         .foregroundStyle(.primary)
+        .locusGlass(.interactive, in: Circle())
     }
 }

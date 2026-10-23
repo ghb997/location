@@ -7,6 +7,8 @@ struct MapHomeView: View {
     @AppStorage(CoordinateSettings.mapKey) private var mapCoordinateSystem = "wgs84"
 
     @StateObject private var search = PlaceSearchCompleter()
+    @State private var routeGeometry: RouteDisplayGeometry?
+    @State private var geometryRevision = ""
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
@@ -51,6 +53,10 @@ struct MapHomeView: View {
         routeSelection.resolvedSource(draft: session.draftTrack, current: session.currentRoute)
     }
 
+    private var routeGeometryKey: String {
+        "\(displayedRoute?.id.uuidString ?? "none")-\(session.routeDraftRevision)-\(mapCoordinateSystem)"
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             // Keep Map inside the safe layout bounds so MapProxy.convert matches
@@ -79,7 +85,7 @@ struct MapHomeView: View {
                                     beginTargetChange()
                                     suppressNextMapTap = true
                                     withAnimation {
-                                        session.pin = nil
+                                        session.selectTarget(nil)
                                         pinSelected = false
                                     }
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
@@ -115,10 +121,10 @@ struct MapHomeView: View {
                             }
                         }
                     }
-                    if let track = displayedRoute {
-                        ForEach(Array(track.segments.enumerated()), id: \.offset) { _, segment in
-                            if segment.points.count > 1 {
-                                MapPolyline(coordinates: segment.coordinates.map(displayed))
+                    if geometryRevision == routeGeometryKey, let routeGeometry {
+                        ForEach(routeGeometry.segments) { segment in
+                            if segment.coordinates.count > 1 {
+                                MapPolyline(coordinates: segment.coordinates)
                                     .stroke(LocusTheme.accent, lineWidth: 5)
                             }
                         }
@@ -141,6 +147,27 @@ struct MapHomeView: View {
 
             topChrome
         }
+        .task(id: routeGeometryKey) {
+            let key = routeGeometryKey
+            guard let track = displayedRoute else { routeGeometry = nil; return }
+            let system = CoordinateSystem(rawValue: mapCoordinateSystem) ?? .wgs84
+            let preparation = Task.detached(priority: .userInitiated) {
+                try RouteDisplayGeometry(track: track) {
+                    try CoordinateTransform.convert($0, from: .wgs84, to: system)
+                }
+            }
+            do {
+                let prepared = try await withTaskCancellationHandler {
+                    try await preparation.value
+                } onCancel: { preparation.cancel() }
+                guard !Task.isCancelled, key == routeGeometryKey else { return }
+                routeGeometry = prepared
+                geometryRevision = key
+            } catch is CancellationError {} catch {
+                guard !Task.isCancelled, key == routeGeometryKey else { return }
+                session.lastError = error.localizedDescription
+            }
+        }
         .onAppear {
             session.startLocationUpdates()
             importPendingGPX()
@@ -148,6 +175,8 @@ struct MapHomeView: View {
         .onChange(of: session.pin?.latitude) { _, newValue in
             if newValue == nil { pinSelected = false }
         }
+        .onChange(of: routeStart.map(RoutePoint.init)) { _, _ in cancelDraftPreparation() }
+        .onChange(of: routeEnd.map(RoutePoint.init)) { _, _ in cancelDraftPreparation() }
         .onChange(of: session.pendingGPXURL) { _, _ in
             importPendingGPX()
         }
@@ -179,6 +208,7 @@ struct MapHomeView: View {
                 onUseDrawn: useDrawnPath
             )
             .presentationDetents([.medium, .large])
+            .locusSheetBackdrop()
         }
     }
 
@@ -191,14 +221,14 @@ struct MapHomeView: View {
         if drawMode {
             drawnPath.append(normalized)
         } else {
-            session.pin = normalized
-            session.pinSource = .mapSelection
+            session.selectTarget(normalized, source: .mapSelection)
             pinPlaceName = nil
             pinSelected = false
         }
     }
 
     private var topChrome: some View {
+        LocusGlassContainer(spacing: 12) {
         VStack(spacing: 10) {
             StatusBarView()
 
@@ -225,6 +255,8 @@ struct MapHomeView: View {
                 )
             }
         }
+        }
+        .frame(maxWidth: 640)
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
         .safeAreaPadding(.top, 8)
@@ -280,12 +312,11 @@ struct MapHomeView: View {
             let operation = PlaceSearchRequest(completion: completion)
             do {
                 let response = try await operation.response()
-                guard !Task.isCancelled, routeSelection.acceptsTargetChange(revision),
+                guard !Task.isCancelled, session.acceptsTargetChange(revision),
                       let item = response.mapItems.first else { return }
                 let coordinate = try CoordinateTransform.normalize(item.placemark.coordinate, from: serviceSystem)
                 let title = item.name ?? completion.title
-                session.pin = coordinate
-                session.pinSource = .appleSearch
+                session.selectTarget(coordinate, source: .appleSearch, replacing: revision)
                 pinPlaceName = title
                 namedPinCoordinate = coordinate
                 position = .region(MKCoordinateRegion(center: displayed(coordinate), latitudinalMeters: 1200, longitudinalMeters: 1200))
@@ -294,7 +325,7 @@ struct MapHomeView: View {
                 searchFocused = false
                 session.pushNamedRecent(name: title, coordinate: coordinate)
             } catch {
-                guard !Task.isCancelled, routeSelection.acceptsTargetChange(revision) else { return }
+                guard !Task.isCancelled, session.acceptsTargetChange(revision) else { return }
                 session.lastError = L10n.tr("Place search failed. Check the network and try again.")
             }
         }
@@ -360,7 +391,8 @@ struct MapHomeView: View {
         session.draftTrack = RouteDocument(tracks: tracks).preferredTrack
         selectedSegmentIndex = 0
         // A search or map selection made after import/build began owns the pin.
-        guard routeSelection.previewDraft(replacingTarget: targetRevision) else { return }
+        routeSelection.show(.draft)
+        guard session.acceptsTargetChange(targetRevision) else { return }
         setDraftTarget()
     }
 
@@ -381,8 +413,7 @@ struct MapHomeView: View {
         guard let track = session.draftTrack else { return }
         if let first = (track.segments.first(where: { $0.canPlay })
             ?? track.segments.first(where: { !$0.points.isEmpty }))?.points.first?.coordinate {
-            session.pin = first
-            session.pinSource = draftSource
+            session.selectTarget(first, source: draftSource)
             position = .region(MKCoordinateRegion(center: displayed(first), latitudinalMeters: 2000, longitudinalMeters: 2000))
         }
     }
@@ -439,8 +470,7 @@ struct MapHomeView: View {
         let normalized: CLLocationCoordinate2D
         do { normalized = try CoordinateSettings.mapInput(coordinate) }
         catch { session.lastError = error.localizedDescription; return }
-        session.pin = normalized
-        session.pinSource = .mapSelection
+        session.selectTarget(normalized, source: .mapSelection)
         pinPlaceName = nil
     }
 
@@ -448,7 +478,7 @@ struct MapHomeView: View {
     private func beginTargetChange() -> UInt64 {
         searchRequest?.cancel()
         searchRequest = nil
-        return routeSelection.beginTargetChange()
+        return session.beginTargetChange()
     }
 
     private func cancelDraftPreparation() {
@@ -475,7 +505,7 @@ struct MapHomeView: View {
             return
         }
         let gpx = GPXCodec.export(track)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Locus-Route.gpx")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("location-Route.gpx")
         do {
             try Data(gpx.utf8).write(to: url, options: .atomic)
             let av = UIActivityViewController(activityItems: [url], applicationActivities: nil)
@@ -520,7 +550,7 @@ private struct RouteMapPreviewBadge: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .locusGlass(in: RoundedRectangle(cornerRadius: 20))
     }
 }
 

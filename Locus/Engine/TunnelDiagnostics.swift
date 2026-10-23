@@ -18,8 +18,18 @@ final class TunnelDiagnostics: ObservableObject {
     private var pendingNative = Set<UUID>()
     private var latestOperation: UUID?
     private var checkTask: Task<Void, Never>?
+    private var checkID: UUID?
     private var startedAt: Date?
     private var stageStartedAt: Date?
+    private struct Operation {
+        let sequence: Int
+        let started: TimeInterval
+        var stage: TunnelStage
+        var endpoint: TunnelEndpoint?
+    }
+    private var operations: [UUID: Operation] = [:]
+    private var operationSequence = 0
+    private var history = DiagnosticHistory()
 
     var statusLabel: String {
         switch state {
@@ -42,24 +52,30 @@ final class TunnelDiagnostics: ObservableObject {
                     self.update(id: id, stage: stage, endpoint: endpoint)
                 }
                 guard !Task.isCancelled, latestOperation == id else { return }
-                endpoint = result
-                stage = .probe
-                state = .reachable
-                message = nil
-                checkedAt = Date()
+                serviceReachable(id: id, endpoint: result)
             } catch {
                 guard !Task.isCancelled, latestOperation == id else { return }
+                networkFailed(id: id, error: error)
+                operations.removeValue(forKey: id)
                 state = .failed
                 message = Self.networkMessage(error)
                 checkedAt = Date()
             }
         }
         checkTask = task
+        checkID = id
         await task.value
-        if latestOperation == id { checkTask = nil }
+        if checkID == id { checkTask = nil; checkID = nil }
     }
 
-    func cancelCheck() { checkTask?.cancel(); checkTask = nil }
+    func cancelCheck() {
+        checkTask?.cancel(); checkTask = nil
+        if let checkID {
+            record(id: checkID, outcome: .failed, error: .operationCancelled)
+            operations.removeValue(forKey: checkID)
+        }
+        checkID = nil
+    }
 
     func summaryForExport() -> String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
@@ -69,24 +85,37 @@ final class TunnelDiagnostics: ObservableObject {
         return "App: \(version) (\(build))\nSystem: iOS \(UIDevice.current.systemVersion)\nElapsed seconds: \(elapsed)\nStage elapsed seconds: \(stageElapsed)\n"
             + TunnelPolicy.exportSummary(stage: stage, source: endpoint?.source, port: endpoint?.port,
                                          error: nativeError, draining: isDraining)
+            + "\n\n" + history.exportText
     }
 
     @discardableResult
     func begin(stage: TunnelStage) -> UUID {
         cancelCheck()
         let id = UUID()
+        operationSequence += 1
+        operations[id] = Operation(sequence: operationSequence, started: ProcessInfo.processInfo.systemUptime,
+                                   stage: stage, endpoint: nil)
         latestOperation = id
         startedAt = Date()
         stageStartedAt = startedAt
         checkedAt = nil
         self.stage = stage
+        endpoint = nil
         nativeError = nil
         message = nil
         state = .checking
+        record(id: id, outcome: .started)
         return id
     }
 
     func update(id: UUID, stage: TunnelStage, endpoint: TunnelEndpoint? = nil) {
+        if var operation = operations[id] {
+            let changed = operation.stage != stage || (endpoint != nil && operation.endpoint != endpoint)
+            operation.stage = stage
+            if let endpoint { operation.endpoint = endpoint }
+            operations[id] = operation
+            if changed { record(id: id, outcome: .stage) }
+        }
         guard latestOperation == id else { return }
         if self.stage != stage { stageStartedAt = Date() }
         self.stage = stage
@@ -94,6 +123,9 @@ final class TunnelDiagnostics: ObservableObject {
     }
 
     func completed(id: UUID, error: LocationEngineError?, native: NativeTunnelError? = nil) {
+        let wasLate = pendingNative.contains(id)
+        record(id: id, outcome: wasLate ? .lateCompletion : (error == nil ? .succeeded : .failed), error: error, native: native)
+        operations.removeValue(forKey: id)
         pendingNative.remove(id)
         isDraining = !pendingNative.isEmpty
         guard latestOperation == id else { return }
@@ -106,6 +138,7 @@ final class TunnelDiagnostics: ObservableObject {
     }
 
     func timedOut(id: UUID) {
+        record(id: id, outcome: .timedOut, error: .operationTimedOut)
         pendingNative.insert(id)
         isDraining = true
         guard latestOperation == id else { return }
@@ -114,11 +147,35 @@ final class TunnelDiagnostics: ObservableObject {
     }
 
     func serviceReachable(id: UUID, endpoint: TunnelEndpoint) {
+        if var operation = operations[id] {
+            operation.endpoint = endpoint
+            operations[id] = operation
+        }
+        record(id: id, outcome: .reachable)
+        operations.removeValue(forKey: id)
         guard latestOperation == id else { return }
         self.endpoint = endpoint
         checkedAt = Date()
         state = .reachable
         message = nil
+    }
+
+    func networkFailed(id: UUID, error: Error) {
+        record(id: id, outcome: .failed, network: DiagnosticHistory.NetworkCategory(error))
+    }
+
+    /// An operation may recover internally. Preserve the first failure even
+    /// when a reconnect or the next heartbeat succeeds.
+    func recordFailure(id: UUID, error: LocationEngineError, native: NativeTunnelError?) {
+        record(id: id, outcome: .failed, error: error, native: native)
+    }
+
+    private func record(id: UUID, outcome: DiagnosticHistory.Outcome, error: LocationEngineError? = nil,
+                        network: DiagnosticHistory.NetworkCategory? = nil, native: NativeTunnelError? = nil) {
+        guard let operation = operations[id] else { return }
+        history.append(operation: operation.sequence, elapsed: ProcessInfo.processInfo.systemUptime - operation.started,
+                       stage: native?.stage ?? operation.stage, outcome: outcome, endpoint: operation.endpoint,
+                       error: error, network: network, native: native)
     }
 
     static func networkMessage(_ error: Error) -> String {

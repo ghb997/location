@@ -78,8 +78,9 @@ enum SpoofStatus: Equatable {
 @MainActor
 final class SpoofSession: ObservableObject {
     @Published var status: SpoofStatus = .idle
-    @Published var pin: CLLocationCoordinate2D?
-    @Published var pinSource: CoordinateSource = .manual
+    @Published private(set) var pin: CLLocationCoordinate2D?
+    @Published private(set) var pinSource: CoordinateSource = .manual
+    @Published private(set) var targetRevision: UInt64 = 0
     @Published var simulated: CLLocationCoordinate2D?
     @Published var travelMode: TravelMode = .walk
     @Published var mapStyleIndex: Int = 0
@@ -87,7 +88,22 @@ final class SpoofSession: ObservableObject {
     @Published private(set) var isBusy = false
     @Published var joystickActive = false
     @Published var pendingGPXURL: URL?
-    @Published var draftTrack: RouteTrack?
+    @Published var draftTrack: RouteTrack? {
+        didSet {
+            routeDraftRevision &+= 1
+            routePersistenceRevision &+= 1
+            if !applyingRestoredRoutes { routeStore.saveDraft(draftTrack) }
+        }
+    }
+    @Published private(set) var routeDraftRevision: UInt64 = 0
+    @Published private(set) var routeStorageIssue: String?
+    private var routePersistenceRevision: UInt64 = 0
+    private var isLoadingRouteWorkspace = true
+    private var restoreLoadCanFollowStop = false
+    private var applyingRestoredRoutes = false
+    private var archivedPlaybackID: UUID?
+    private var restoredRouteNeedsClear = false
+    private let routeStore: RouteWorkspaceStore
     @Published private(set) var currentRoute: RouteTrack?
     @Published private(set) var routePlayback = RoutePlaybackSnapshot()
     @Published private(set) var restorationRequired = false
@@ -105,8 +121,10 @@ final class SpoofSession: ObservableObject {
             if !backgroundEnabled { endBackground() }
         }
     }
-    @Published var favorites: [SavedPlace] = []
-    @Published var recents: [SavedPlace] = []
+    @Published private(set) var favorites: [SavedPlace] = []
+    @Published private(set) var favoritesNeedRecovery = false
+    @Published private(set) var recentsNeedRecovery = false
+    @Published private(set) var recents: [SavedPlace] = []
 
     private var resendTask: Task<Void, Never>?
     private var operationEpoch = SessionOperationEpoch()
@@ -152,8 +170,8 @@ final class SpoofSession: ObservableObject {
         self.clock = clock
         self.transport = transport ?? SessionRuntime.nativeTransport()
         self.restorationStore = restorationStore
-        favorites = SavedPlace.load(key: favoritesKey, defaults: runtime.preferences)
-        recents = SavedPlace.load(key: recentsKey, defaults: runtime.preferences)
+        self.routeStore = RouteWorkspaceStore(defaults: runtime.preferences)
+        reloadPlaces()
         if let context = restorationStore.record {
             restoreContext = context
             restorationRequired = true
@@ -184,6 +202,28 @@ final class SpoofSession: ObservableObject {
         }
         if runtime.monitorsNetwork {
             pathMonitor.start(queue: DispatchQueue(label: "com.ghb997.location.path"))
+        }
+        let store = routeStore
+        let revision = routePersistenceRevision
+        let operation = generation
+        Task { [weak self] in
+            let loaded = await store.load()
+            guard let self else { return }
+            isLoadingRouteWorkspace = false
+            guard revision == routePersistenceRevision,
+                  operationEpoch.accepts(operation) || restoreLoadCanFollowStop else { return }
+            restoreLoadCanFollowStop = false
+            if loaded.damaged { routeStorageIssue = L10n.tr("Some saved route data could not be read. Review the restored route before continuing.") }
+            applyingRestoredRoutes = true
+            draftTrack = loaded.draft
+            applyingRestoredRoutes = false
+            if let core = loaded.core {
+                routeCore = core
+                currentRoute = core.track
+                routePlayback = core.snapshot
+                archivedPlaybackID = core.playbackID
+                restoredRouteNeedsClear = restorationRequired
+            }
         }
     }
 
@@ -279,6 +319,24 @@ final class SpoofSession: ObservableObject {
         else { locationKeeper.requestFreshSystemFix() }
     }
 
+    /// All screens share this revision. Late providers may update only the
+    /// target they reserved, never a newer manual/map/favorite selection.
+    @discardableResult
+    func beginTargetChange() -> UInt64 { targetRevision &+= 1; return targetRevision }
+
+    func acceptsTargetChange(_ revision: UInt64) -> Bool { targetRevision == revision }
+
+    @discardableResult
+    func selectTarget(_ coordinate: CLLocationCoordinate2D?, source: CoordinateSource = .manual,
+                      replacing revision: UInt64? = nil) -> Bool {
+        if let revision, !acceptsTargetChange(revision) { return false }
+        if let coordinate, !RouteGeometry.isValid(coordinate) { return false }
+        beginTargetChange()
+        pin = coordinate
+        pinSource = source
+        return true
+    }
+
     func teleport(to coordinate: CLLocationCoordinate2D, pairing: any PairingProviding) {
         guard canWrite, canStart(pairing: pairing) else { return }
         guard RouteGeometry.isValid(coordinate) else {
@@ -289,7 +347,7 @@ final class SpoofSession: ObservableObject {
         let previousCore = routeCore
         cancelMovement(resetRoute: false)
         let token = generation
-        pin = coordinate
+        selectTarget(coordinate, source: pinSource)
         Task {
             let succeeded = await apply(coordinate, pairing: pairing, markRecent: true, token: token)
             guard operationEpoch.accepts(token) else { return }
@@ -314,7 +372,8 @@ final class SpoofSession: ObservableObject {
         }
         activePairing = pairing
         let needsRecovery = restorationRequired || simulated != nil
-        cancelMovement(resetRoute: true)
+        if isLoadingRouteWorkspace && restorationRequired { restoreLoadCanFollowStop = true }
+        cancelMovement(resetRoute: !(restoredRouteNeedsClear || restoreLoadCanFollowStop))
         stopResend()
         isStopping = true
         isBusy = true
@@ -338,6 +397,7 @@ final class SpoofSession: ObservableObject {
                 lastError = nil
                 lastNotifiedDropReason = nil
                 clearRestoreMarker()
+                restoredRouteNeedsClear = false
                 confirmedStopAt = Date()
                 restoredFix = nil
                 locationKeeper.requestFreshSystemFix()
@@ -449,8 +509,10 @@ final class SpoofSession: ObservableObject {
             isBusy = false
             routeTask = nil
             guard var prepared else {
-                routeCore = previous
-                currentRoute = previous?.track
+                var pausedPrevious = previous
+                pausedPrevious?.pause(.user)
+                routeCore = pausedPrevious
+                currentRoute = pausedPrevious?.track
                 publishRoute()
                 lastError = LocationEngineError.invalidCoordinate.localizedDescription
                 return
@@ -581,7 +643,14 @@ final class SpoofSession: ObservableObject {
 
     private func publishRoute() {
         routePlayback = routeCore?.snapshot ?? RoutePlaybackSnapshot()
+        routePersistenceRevision &+= 1
+        // Keep the previous archive while its replacement is being prepared.
+        guard currentRoute == nil || routeCore != nil else { return }
+        routeStore.saveRoute(routeCore, includeArchive: routeCore?.playbackID != archivedPlaybackID)
+        archivedPlaybackID = routeCore?.playbackID
     }
+
+    func flushRoutePersistence() async { await routeStore.flush() }
 
     private func markRestoreNeeded(_ coordinate: CLLocationCoordinate2D, pairing: any PairingProviding) -> Bool {
         let context = RestorationRecord(point: RoutePoint(coordinate), pairingPath: pairing.pairingPath, deviceIP: runtime.targetIP())
@@ -603,6 +672,7 @@ final class SpoofSession: ObservableObject {
 
 
     func addFavorite(name: String, coordinate: CLLocationCoordinate2D) {
+        guard canEditPlaces(recent: false) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var place = SavedPlace(
             name: trimmed.isEmpty ? Self.coordinateLabel(coordinate) : trimmed,
@@ -622,25 +692,28 @@ final class SpoofSession: ObservableObject {
         }
         favorites.removeAll { $0.coordinateKey == place.coordinateKey }
         favorites.insert(place, at: 0)
-        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
+        persistPlaces(recent: false)
     }
 
     func renameFavorite(_ place: SavedPlace, to name: String) {
+        guard canEditPlaces(recent: false) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         favorites[index].name = trimmed
-        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
+        persistPlaces(recent: false)
     }
 
     func removeFavorite(_ place: SavedPlace) {
+        guard canEditPlaces(recent: false) else { return }
         favorites.removeAll { $0.id == place.id }
-        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
+        persistPlaces(recent: false)
     }
 
     func removeRecent(_ place: SavedPlace) {
+        guard canEditPlaces(recent: true) else { return }
         recents.removeAll { $0.id == place.id }
-        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
+        persistPlaces(recent: true)
     }
 
     /// Best display name for starring the current pin (search title, matching recent, etc.).
@@ -847,6 +920,7 @@ final class SpoofSession: ObservableObject {
     }
 
     func pushNamedRecent(name: String, coordinate: CLLocationCoordinate2D) {
+        guard canEditPlaces(recent: true) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var place = SavedPlace(name: trimmed.isEmpty ? Self.coordinateLabel(coordinate) : trimmed,
                                latitude: coordinate.latitude, longitude: coordinate.longitude, source: pinSource)
@@ -854,40 +928,88 @@ final class SpoofSession: ObservableObject {
         recents.removeAll { abs($0.latitude - place.latitude) < 0.00015 && abs($0.longitude - place.longitude) < 0.00015 }
         recents.insert(place, at: 0)
         if recents.count > 20 { recents = Array(recents.prefix(20)) }
-        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
+        persistPlaces(recent: true)
     }
 
     func correctFavoriteFromGCJ02(_ place: SavedPlace) {
+        guard canEditPlaces(recent: false) else { return }
         guard let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         do {
             favorites[index] = try favorites[index].correctedFromGCJ02()
-            SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
+            persistPlaces(recent: false)
         } catch { lastError = error.localizedDescription }
     }
 
     func restoreFavoriteOriginalCoordinate(_ place: SavedPlace) {
+        guard canEditPlaces(recent: false) else { return }
         guard let index = favorites.firstIndex(where: { $0.id == place.id }) else { return }
         favorites[index] = favorites[index].restoringOriginalCoordinate()
-        SavedPlace.save(favorites, key: favoritesKey, defaults: runtime.preferences)
+        persistPlaces(recent: false)
     }
 
     func correctRecentFromGCJ02(_ place: SavedPlace) {
+        guard canEditPlaces(recent: true) else { return }
         guard let index = recents.firstIndex(where: { $0.id == place.id }) else { return }
         do {
             recents[index] = try recents[index].correctedFromGCJ02()
-            SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
+            persistPlaces(recent: true)
         } catch { lastError = error.localizedDescription }
     }
 
     func restoreRecentOriginalCoordinate(_ place: SavedPlace) {
+        guard canEditPlaces(recent: true) else { return }
         guard let index = recents.firstIndex(where: { $0.id == place.id }) else { return }
         recents[index] = recents[index].restoringOriginalCoordinate()
-        SavedPlace.save(recents, key: recentsKey, defaults: runtime.preferences)
+        persistPlaces(recent: true)
     }
 
     func reloadPlaces() {
-        favorites = SavedPlace.load(key: favoritesKey, defaults: runtime.preferences)
-        recents = SavedPlace.load(key: recentsKey, defaults: runtime.preferences)
+        let saved = SavedPlace.loadResult(key: favoritesKey, defaults: runtime.preferences)
+        let recent = SavedPlace.loadResult(key: recentsKey, defaults: runtime.preferences)
+        favorites = saved.places
+        recents = recent.places
+        favoritesNeedRecovery = saved.requiresRecovery
+        recentsNeedRecovery = recent.requiresRecovery
+    }
+
+    private func canEditPlaces(recent: Bool) -> Bool {
+        let result = SavedPlace.loadResult(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences)
+        guard !result.requiresRecovery else {
+            reloadPlaces()
+            lastError = L10n.tr("Saved places could not be read. The original data is protected. Open Places to export or recover it.")
+            return false
+        }
+        return true
+    }
+
+    private func persistPlaces(recent: Bool) {
+        if !SavedPlace.save(recent ? recents : favorites, key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) {
+            reloadPlaces()
+            lastError = L10n.tr("Saved places could not be read. The original data is protected. Open Places to export or recover it.")
+        }
+    }
+
+    func canRecoverPlaces(recent: Bool) -> Bool {
+        SavedPlace.recoverableBackup(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) != nil
+    }
+
+    func recoverPlaces(recent: Bool) {
+        if !SavedPlace.restoreBackup(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) {
+            lastError = L10n.tr("No valid saved-place backup is available. Export the original data for recovery.")
+        }
+        reloadPlaces()
+    }
+
+    func resetDamagedPlaces(recent: Bool) {
+        _ = SavedPlace.startNewListPreservingDamagedData(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences)
+        reloadPlaces()
+    }
+
+    func exportDamagedPlaces(recent: Bool) -> URL? {
+        guard let data = SavedPlace.rawDataForExport(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("location-places-\(UUID().uuidString).json")
+        do { try data.write(to: url, options: .atomic); return url }
+        catch { lastError = error.localizedDescription; return nil }
     }
 
     private func beginBackground() {

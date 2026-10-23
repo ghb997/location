@@ -27,7 +27,7 @@ def package(application, destination):
     shutil.copy2(ROOT / "Vendor/idevice/LICENSE", copied / "LICENSE-idevice.txt")
     shutil.copy2(ROOT / "Vendor/coordtransform/LICENSE", copied / "LICENSE-coordtransform.txt")
     shutil.copy2(ROOT / "Vendor/NaturalEarth/LICENSE.md", copied / "NOTICE-NaturalEarth.txt")
-    filename = f"Locus-{version}-zh-Hans-unsigned.ipa"
+    filename = f"location-{version}-zh-Hans-unsigned.ipa"
     subprocess.run(["zip", "-qry", filename, "Payload"], cwd=destination, check=True)
     digest = hashlib.sha256((destination / filename).read_bytes()).hexdigest()
     (destination / "SHA256SUMS.txt").write_text(f"{digest}  {filename}\n", encoding="utf-8")

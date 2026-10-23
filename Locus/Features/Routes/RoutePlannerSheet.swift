@@ -4,6 +4,7 @@ import SwiftUI
 struct RoutePlannerSheet: View {
     @EnvironmentObject private var session: SpoofSession
     @Environment(\.dismiss) private var dismiss
+    @State private var remainingDistances: [Double] = []
     @Binding var start: CLLocationCoordinate2D?
     @Binding var end: CLLocationCoordinate2D?
     @Binding var isRouting: Bool
@@ -22,6 +23,13 @@ struct RoutePlannerSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                if let issue = session.routeStorageIssue {
+                    Section { Text(issue).font(.footnote).foregroundStyle(.secondary) }
+                }
+                Section {
+                    Label(L10n.tr("Routes reopen paused at their last confirmed progress."), systemImage: "pause.circle")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section(L10n.tr("Selected route")) {
                     if let track = session.draftTrack {
                         Text(track.name).font(.headline)
@@ -91,7 +99,18 @@ struct RoutePlannerSheet: View {
                         .disabled(session.draftTrack == nil)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle(L10n.tr("Routes"))
+            .task(id: session.routeDraftRevision) {
+                remainingDistances = []
+                guard let track = session.draftTrack else { remainingDistances = []; return }
+                let preparation = Task.detached(priority: .userInitiated) { try RouteDisplayGeometry(track: track).remainingDistances }
+                do {
+                    let distances = try await withTaskCancellationHandler { try await preparation.value } onCancel: { preparation.cancel() }
+                    guard !Task.isCancelled else { return }
+                    remainingDistances = distances
+                } catch { }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L10n.tr("Done")) { dismiss() } }
             }
@@ -105,11 +124,8 @@ struct RoutePlannerSheet: View {
 
     private func distanceText(_ track: RouteTrack) -> String {
         let index = min(max(0, selectedSegmentIndex), max(0, track.segments.count - 1))
-        let meters = track.segments.dropFirst(index).reduce(0.0) { total, segment in
-            total + zip(segment.coordinates, segment.coordinates.dropFirst()).reduce(0.0) {
-                $0 + RouteGeometry.distance(from: $1.0, to: $1.1)
-            }
-        }
+        guard remainingDistances.indices.contains(index) else { return "—" }
+        let meters = remainingDistances[index]
         return String(format: "%.2f km", meters / 1000)
     }
 }

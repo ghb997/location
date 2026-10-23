@@ -1,7 +1,7 @@
-// Locus interface, errors, notifications and accessibility.
+// location interface, errors, notifications and accessibility.
 "A short setup — about two minutes." = "Follow the guide to pair your device and connect the tunnel.";
 "About" = "About";
-"AirDrop / Share into Locus, or copy the plist text." = "AirDrop / Share into Locus, or copy the plist text.";
+"AirDrop / Share into Locus, or copy the plist text." = "AirDrop / Share into location, or copy the plist text.";
 "Allow notifications — the code can appear as a banner over Settings." = "Allow notifications — the code can appear as a banner over Settings.";
 "Build or draw a route first." = "Build or draw a route first.";
 "Build walk/drive route on roads" = "Build walk/drive route on roads";
@@ -36,7 +36,7 @@
 "End" = "End";
 "Engine" = "Engine";
 "Enter this code in Settings" = "Enter this code in Settings";
-"Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code." = "Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code.";
+"Enter your unlock passcode first. On the next prompt, type Locus’s 6-digit code." = "Enter your unlock passcode first. On the next prompt, type location’s 6-digit code.";
 "Export GPX" = "Export GPX";
 "Failed to clear simulated location." = "Failed to clear simulated location.";
 "Failed to set simulated coordinates." = "Failed to set simulated coordinates.";
@@ -56,29 +56,29 @@
 "If the code isn’t here yet" = "If the code isn’t here yet";
 "Import GPX" = "Import GPX";
 "Import RPPairing file…" = "Import RPPairing file…";
-"Import a pairing file from your computer — Locus uses it to set your location securely on this device." = "Import a pairing file from your computer — Locus uses it to set your location securely on this device.";
-"Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste." = "Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste.";
+"Import a pairing file from your computer — Locus uses it to set your location securely on this device." = "Import a pairing file from your computer — location uses it to set your location securely on this device.";
+"Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste." = "Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → location, or copy the plist and use Paste.";
 "Import an RPPairing file in Settings first." = "Import an RPPairing file in Settings first.";
 "Import pairing file" = "Import pairing file";
-"In Developer Mode tap Pair with Locus → Pair." = "In Developer Mode tap Pair with Locus → Pair.";
+"In Developer Mode tap Pair with Locus → Pair." = "In Developer Mode tap Pair with location → Pair.";
 "Install" = "Install";
 "Installed" = "Installed";
 "Interrupted" = "Interrupted";
 "I’ve connected it — continue" = "I’ve connected it — continue";
 "Joy" = "Joy";
-"Keep Locus open. You’ll leave briefly for Settings, then come back with a code." = "Keep Locus open. You’ll leave briefly for Settings, then come back with a code.";
-"Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with Locus” vanishes, stop/start pairing and reopen Developer Mode." = "Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with Locus” vanishes, stop/start pairing and reopen Developer Mode.";
-"LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport.";
-"LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here." = "LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here.";
+"Keep Locus open. You’ll leave briefly for Settings, then come back with a code." = "Keep location open. You’ll leave briefly for Settings, then come back with a code.";
+"Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with Locus” vanishes, stop/start pairing and reopen Developer Mode." = "Keep the app listening while you confirm in Developer Mode. Don’t force-quit. If “Pair with location” vanishes, stop/start pairing and reopen Developer Mode.";
+"LocalDevVPN creates a private tunnel Locus uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN creates a private tunnel location uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport.";
+"LocalDevVPN is installed. Open it to turn on the private tunnel Locus needs, then come back here." = "LocalDevVPN is installed. Open it to turn on the private tunnel location needs, then come back here.";
 "LocalDevVPN is on this iPhone." = "LocalDevVPN is on this iPhone.";
-"Locus Route" = "Locus Route";
-"Locus advertises a pairable host. iOS connects from Developer Mode, then Locus shows a 6-digit code for you to type." = "Locus advertises a pairable host. iOS connects from Developer Mode, then Locus shows a 6-digit code for you to type.";
-"Locus connected" = "Locus connected";
-"Locus is free and open source (MIT). Location injection uses the MIT-licensed idevice FFI." = "Locus is free and open source (MIT), originally by ChrisMack32. This Chinese localization and improvements are maintained by ghb997. Location simulation uses the MIT-licensed idevice FFI.";
-"Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.";
-"Locus paired" = "Locus paired";
-"Locus pairing code" = "Locus pairing code";
-"Locus spoof dropped" = "Locus spoof dropped";
+"Locus Route" = "location Route";
+"Locus advertises a pairable host. iOS connects from Developer Mode, then Locus shows a 6-digit code for you to type." = "location advertises a pairable host. iOS connects from Developer Mode, then location shows a 6-digit code for you to type.";
+"Locus connected" = "location connected";
+"Locus is free and open source (MIT). Location injection uses the MIT-licensed idevice FFI." = "location is based on ChrisMack32’s open-source Locus project (MIT), with localization and improvements maintained by ghb997. Location simulation uses the MIT-licensed idevice FFI.";
+"Locus needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.";
+"Locus paired" = "location paired";
+"Locus pairing code" = "location pairing code";
+"Locus spoof dropped" = "location spoof dropped";
 "Map pin" = "Map pin";
 "Movement joystick" = "Movement joystick";
 "Name" = "Name";
@@ -93,11 +93,11 @@
 "Nothing to export." = "Nothing to export.";
 "OK" = "OK";
 "On" = "On";
-"On iOS 27, use Pair on this iPhone — no computer. Locus advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on Locus, or use Paste / Share → LiveContainer → Locus." = "On iOS 27, use Pair on this iPhone — no computer. Locus advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on Locus, or use Paste / Share → LiveContainer → Locus.";
+"On iOS 27, use Pair on this iPhone — no computer. Locus advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on Locus, or use Paste / Share → LiveContainer → Locus." = "On iOS 27, use Pair on this iPhone — no computer. location advertises a pairable host; confirm the 6-digit code under Settings › Privacy & Security › Developer Mode › Pair with Host. On older iOS, import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). LiveContainer: enable Fix File Picker on location, or use Paste / Share → LiveContainer → location.";
 "On your computer, run idevice_pair and create an RPPairing file." = "On your computer, run idevice_pair and create an RPPairing file.";
 "One more app" = "One more app";
 "Open LocalDevVPN" = "Open LocalDevVPN";
-"Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair." = "Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair.";
+"Open Settings › Privacy & Security › Developer Mode › Pair with Locus → Pair." = "Open Settings › Privacy & Security › Developer Mode › Pair with location → Pair.";
 "Open it and turn the VPN on. Leave the default IP alone." = "Open it and turn the VPN on. Leave the default IP alone.";
 "Pair on this iPhone" = "Pair on this iPhone";
 "Paired" = "Paired";
@@ -144,7 +144,7 @@
 "Stopping…" = "Stopping…";
 "Tap Import, or Paste from clipboard if the picker doesn’t work (LiveContainer)." = "Tap Import, or Paste from clipboard if the picker doesn’t work (LiveContainer).";
 "Tap Start pairing and allow Local Network + Location when asked." = "Tap Start pairing and allow Local Network + Location when asked.";
-"Tap below to open it and start the tunnel. You’ll bounce back to Locus." = "Tap below to open it and start the tunnel. You’ll bounce back to Locus.";
+"Tap below to open it and start the tunnel. You’ll bounce back to Locus." = "Tap below to open it and start the tunnel. You’ll bounce back to location.";
 "Tap the map to drop a pin first." = "Tap the map to drop a pin first.";
 "Tap to show remove. Touch and hold to drag." = "Tap to show remove. Touch and hold to drag.";
 "Teleport" = "Teleport";
@@ -165,7 +165,7 @@
 "Use drawn path from map" = "Use drawn path from map";
 "Version" = "Version";
 "Waiting for Settings…" = "Waiting for Settings…";
-"Waiting for iOS to connect… don’t force-quit Locus." = "Waiting for iOS to connect… don’t force-quit Locus.";
+"Waiting for iOS to connect… don’t force-quit Locus." = "Waiting for iOS to connect… don’t force-quit location.";
 "Walk" = "Walk";
 "close enough" = "close enough";
 "iPhone connected" = "iPhone connected";
@@ -177,7 +177,7 @@
 
 /* Connection, route and coordinate improvements */
 "A previous simulation may still be active. Restore the system location before starting again." = "A previous simulation may still be active. Restore the system location before starting again.";
-"Allow Local Network access for Locus in Settings, then check the connection again." = "Allow Local Network access for Locus in Settings, then check the connection again.";
+"Allow Local Network access for Locus in Settings, then check the connection again." = "Allow Local Network access for location in Settings, then check the connection again.";
 "Apply coordinate correction" = "Apply coordinate correction";
 "Approximate shift: %.0f m" = "Approximate shift: %.0f m";
 "Background and system location" = "Background and system location";
@@ -296,7 +296,7 @@
 "Accuracy: ±%.0f m" = "Accuracy: ±%.0f m";
 "The restoration record could not be read. Check the pairing file and restore the system location before starting." = "The restoration record could not be read. Check the pairing file and restore the system location before starting.";
 "Preparing route…" = "Preparing route…";
-"Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings.";
+"Background location is optional. You can enable it with Always permission in Locus Settings to help pairing continue while switching to iOS Settings." = "Background location is optional. You can enable it with Always permission in location Settings to help pairing continue while switching to iOS Settings.";
 "The native pairing listener returned an invalid port." = "The native pairing listener returned an invalid port.";
 "The pairing connection failed. Check Local Network permission and try again after the native listener finishes." = "The pairing connection failed. Check Local Network permission and try again after the native listener finishes.";
 
@@ -314,3 +314,33 @@
 "Getting a fresh system location…" = "Getting a fresh system location…";
 "The system returned a cached or unavailable location. Retrying…" = "The system returned a cached or unavailable location. Retrying…";
 "Getting a fresh system location timed out. Tap Refresh system location to try again." = "Getting a fresh system location timed out. Tap Refresh system location to try again.";
+
+/* 1.2.0 location, recovery, route persistence and glass accessibility */
+"AirDrop / Share into location, or copy the plist text." = "AirDrop / Share into location, or copy the plist text.";
+"Drag to move. Release to hold position." = "Drag to move. Release to hold position.";
+"Favorites need recovery" = "Favorites need recovery";
+"Favorites, recents and route progress are stored on this device. Search and road routing send requests to Apple map services. location has no accounts or analytics." = "Favorites, recents and route progress are stored on this device. Map display, place search and road routing send requests to Apple Maps services. location has no accounts or analytics.";
+"Import a pairing file from your computer — location uses it to set your location securely on this device." = "Import a pairing file from your computer — location uses it to set your location securely on this device.";
+"LocalDevVPN creates a private tunnel location uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport." = "LocalDevVPN creates a private tunnel location uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport.";
+"LocalDevVPN is installed. Open it to turn on the private tunnel location needs, then come back here." = "LocalDevVPN is installed. Open it to turn on the private tunnel location needs, then come back here.";
+"No valid saved-place backup is available. Export the original data for recovery." = "No valid saved-place backup is available. Export the original data for recovery.";
+"Pairing audio is unavailable. Keep location open when possible; pairing can continue without audio." = "Pairing audio is unavailable. Keep location open when possible; pairing can continue without audio.";
+"Pairing audio was interrupted. Keep location open when possible; pairing can continue without audio." = "Pairing audio was interrupted. Keep location open when possible; pairing can continue without audio.";
+"Prepare recovery export" = "Prepare recovery export";
+"Preserve original and start new list" = "Preserve original and start new list";
+"Recents need recovery" = "Recents need recovery";
+"Restore backup" = "Restore backup";
+"Restore saved-place backup?" = "Restore saved-place backup?";
+"Routes reopen paused at their last confirmed progress." = "Routes reopen paused at their last confirmed progress.";
+"Saved places could not be read. The original data is protected. Open Places to export or recover it." = "Saved places could not be read. The original data is protected. Open Places to export or recover it.";
+"Share saved-place recovery file" = "Share saved-place recovery file";
+"Some saved route data could not be read. Review the restored route before continuing." = "Some saved route data could not be read. Review the restored route before continuing.";
+"Start a new list" = "Start a new list";
+"Start a new saved-place list?" = "Start a new saved-place list?";
+"Tap below to open it and start the tunnel. You’ll return to location." = "Tap below to open it and start the tunnel. You’ll return to location.";
+"The damaged original is kept in recovery storage. Export it first if you want a separate copy." = "The damaged original is kept in recovery storage. Export it first if you want a separate copy.";
+"The damaged original is preserved. The list will return to the last readable backup." = "The damaged original is preserved. The list will return to the last readable backup.";
+"This export contains your saved names and coordinates." = "This export contains your saved names and coordinates.";
+"location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI." = "location is based on ChrisMack32’s open-source Locus project (MIT), with localization and improvements maintained by ghb997. Location simulation uses the MIT-licensed idevice FFI.";
+"location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.";
+"location · A place of your choosing." = "location · A place of your choosing.";

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct JoystickPad: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onChange: (CGVector) -> Void
 
     @State private var dragOffset: CGSize = .zero
@@ -8,13 +9,19 @@ struct JoystickPad: View {
 
     var body: some View {
         ZStack {
-            Circle()
+            Color.clear
                 .frame(width: radius * 2 + 28, height: radius * 2 + 28)
-                .locusGlass(.clear, in: Circle())
+                .locusGlass(.regular, in: Circle())
 
             Circle()
                 .stroke(LocusTheme.accent.opacity(0.4), lineWidth: 2)
                 .frame(width: radius * 2, height: radius * 2)
+                .accessibilityHidden(true)
+
+            Image(systemName: "plus")
+                .font(.system(size: 46, weight: .ultraLight))
+                .foregroundStyle(LocusTheme.accent.opacity(0.35))
+                .accessibilityHidden(true)
 
             Circle()
                 .fill(LocusTheme.accent)
@@ -29,7 +36,7 @@ struct JoystickPad: View {
                             onChange(CGVector(dx: limited.width / radius, dy: limited.height / radius))
                         }
                         .onEnded { _ in
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.7)) {
                                 dragOffset = .zero
                             }
                             onChange(.zero)
@@ -37,6 +44,8 @@ struct JoystickPad: View {
                 )
         }
         .accessibilityLabel(L10n.tr("Movement joystick"))
+        .accessibilityHint(L10n.tr("Drag to move. Release to hold position."))
+        .onDisappear { onChange(.zero) }
     }
 
     private func clamp(_ translation: CGSize, radius: CGFloat) -> CGSize {

@@ -6,6 +6,10 @@ struct PlacesView: View {
     @EnvironmentObject private var pairing: PairingStore
     @Environment(\.dismiss) private var dismiss
 
+    @State private var recoveryExport: URL?
+    @State private var recoveryIsRecent = false
+    @State private var showRecoveryConfirmation = false
+    @State private var showResetConfirmation = false
     @State private var placeToRename: SavedPlace?
     @State private var renameText = ""
     @State private var correctionPreview: CoordinateCorrectionPreview?
@@ -14,8 +18,16 @@ struct PlacesView: View {
     var body: some View {
         NavigationStack {
             List {
+                if session.favoritesNeedRecovery { recoverySection(recent: false) }
+                if session.recentsNeedRecovery { recoverySection(recent: true) }
+                if let recoveryExport {
+                    Section {
+                        ShareLink(item: recoveryExport) { Label(L10n.tr("Share saved-place recovery file"), systemImage: "square.and.arrow.up") }
+                        Text(L10n.tr("This export contains your saved names and coordinates.")).font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
                 Section(L10n.tr("Favorites")) {
-                    if session.favorites.isEmpty {
+                    if session.favorites.isEmpty && !session.favoritesNeedRecovery {
                         Text(L10n.tr("Star a pin from the map to save it."))
                             .foregroundStyle(.secondary)
                     }
@@ -51,7 +63,7 @@ struct PlacesView: View {
                 }
 
                 Section(L10n.tr("Recents")) {
-                    if session.recents.isEmpty {
+                    if session.recents.isEmpty && !session.recentsNeedRecovery {
                         Text(L10n.tr("Teleports show up here."))
                             .foregroundStyle(.secondary)
                     }
@@ -79,7 +91,16 @@ struct PlacesView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle(L10n.tr("Places"))
+            .confirmationDialog(L10n.tr("Restore saved-place backup?"), isPresented: $showRecoveryConfirmation, titleVisibility: .visible) {
+                Button(L10n.tr("Restore backup")) { session.recoverPlaces(recent: recoveryIsRecent) }
+                Button(L10n.tr("Cancel"), role: .cancel) { }
+            } message: { Text(L10n.tr("The damaged original is preserved. The list will return to the last readable backup.")) }
+            .confirmationDialog(L10n.tr("Start a new saved-place list?"), isPresented: $showResetConfirmation, titleVisibility: .visible) {
+                Button(L10n.tr("Preserve original and start new list"), role: .destructive) { session.resetDamagedPlaces(recent: recoveryIsRecent) }
+                Button(L10n.tr("Cancel"), role: .cancel) { }
+            } message: { Text(L10n.tr("The damaged original is kept in recovery storage. Export it first if you want a separate copy.")) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L10n.tr("Done")) { dismiss() }
@@ -114,12 +135,25 @@ struct PlacesView: View {
                 Text(correctionError ?? "")
             }
         }
+        .locusSheetBackdrop()
+    }
+
+    private func recoverySection(recent: Bool) -> some View {
+        Section(recent ? L10n.tr("Recents need recovery") : L10n.tr("Favorites need recovery")) {
+            Label(L10n.tr("Saved places could not be read. The original data is protected. Open Places to export or recover it."), systemImage: "exclamationmark.shield")
+                .font(.footnote)
+            Button(L10n.tr("Prepare recovery export")) { recoveryExport = session.exportDamagedPlaces(recent: recent) }
+            if session.canRecoverPlaces(recent: recent) {
+                Button(L10n.tr("Restore backup")) { recoveryIsRecent = recent; showRecoveryConfirmation = true }
+            }
+            Button(L10n.tr("Start a new list")) { recoveryIsRecent = recent; showResetConfirmation = true }
+        }
     }
 
     private func placeButton(_ place: SavedPlace) -> some View {
         Button {
             guard session.canWrite else { return }
-            session.pinSource = place.source
+            session.selectTarget(place.coordinate, source: place.source)
             session.teleport(to: place.coordinate, pairing: pairing)
             dismiss()
         } label: {

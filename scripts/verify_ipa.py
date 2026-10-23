@@ -22,6 +22,8 @@ def verify(path):
         info_path = candidates[0]
         app = info_path.removesuffix("Info.plist")
         info = plistlib.loads(archive.read(info_path))
+        assert info["CFBundleDisplayName"] == "location"
+        assert info["CFBundleName"] == "location"
         assert info["CFBundleIdentifier"] == "com.ghb997.location"
         assert info["CFBundleShortVersionString"] == expected_version
         assert info["CFBundleVersion"] == expected_build
@@ -46,6 +48,8 @@ def verify(path):
         for language in ["en", "zh-Hans"]:
             for filename in ["Localizable.strings", "InfoPlist.strings"]:
                 content = plistlib.loads(archive.read(app + language + ".lproj/" + filename))
+                if filename == "InfoPlist.strings":
+                    assert content["CFBundleDisplayName"] == "location"
                 assert content, f"Empty {language}/{filename}"
                 if language == "zh-Hans" and filename == "Localizable.strings":
                     assert content["Teleport"] == "修改定位"

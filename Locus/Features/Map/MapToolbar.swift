@@ -10,30 +10,32 @@ struct MapToolbar: View {
     let onLocate: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 4) {
-                icon("square.3.layers.3d", title: L10n.tr("Map style"), action: onMapStyle)
-                icon("point.topleft.down.to.point.bottomright.curvepath", title: L10n.tr("Routes"), action: onRoutes)
-                icon(drawMode ? "pencil.tip.crop.circle.badge.minus" : "pencil.tip.crop.circle", title: L10n.tr("Draw route"), action: onDraw)
-                    .foregroundStyle(drawMode ? LocusTheme.accentSecondary : .primary)
-                if hasPin {
-                    icon("star.circle", title: L10n.tr("Add favorite"), action: onFavorite)
+        LocusGlassContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    icon("square.3.layers.3d", title: L10n.tr("Map style"), action: onMapStyle)
+                    icon("point.topleft.down.to.point.bottomright.curvepath", title: L10n.tr("Routes"), action: onRoutes)
+                    icon(drawMode ? "pencil.tip.crop.circle.badge.minus" : "pencil.tip.crop.circle", title: L10n.tr("Draw route"), action: onDraw)
+                        .foregroundStyle(drawMode ? LocusTheme.accentSecondary : .primary)
+                    if hasPin {
+                        icon("star.circle", title: L10n.tr("Add favorite"), action: onFavorite)
+                    }
                 }
+                .padding(6)
+                .locusGlass(.regular, in: Capsule())
+                .contentShape(Capsule())
+                Spacer(minLength: 0)
+                Button(action: onLocate) {
+                    Image(systemName: "location.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 48, height: 48)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .locusGlass(.interactive, in: Circle())
+                .foregroundStyle(.primary)
+                .accessibilityLabel(L10n.tr("Current location"))
             }
-            .padding(6)
-            .locusGlass(.clear, in: Capsule())
-            .contentShape(Capsule())
-            Spacer(minLength: 0)
-            Button(action: onLocate) {
-                Image(systemName: "location.fill")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 48, height: 48)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .locusGlass(.interactive, in: Circle())
-            .foregroundStyle(.primary)
-            .accessibilityLabel(L10n.tr("Current location"))
         }
     }
 
