@@ -36,9 +36,9 @@ compilation alone does not establish visual quality.
 On a Mac with Xcode 26, XcodeGen, and iOS 26 Simulator runtimes installed:
 
 ```sh
-mkdir -p outputs/preview-project outputs/ui-preview
-xcodegen generate --spec DesignPreview/project.yml --project outputs/preview-project
-xcodebuild -project outputs/preview-project/LocationDesignPreview.xcodeproj \
+mkdir -p outputs/ui-preview
+(cd DesignPreview && xcodegen generate)
+xcodebuild -project DesignPreview/LocationDesignPreview.xcodeproj \
   -scheme LocationDesignPreview -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath outputs/preview-build CODE_SIGNING_ALLOWED=NO build
