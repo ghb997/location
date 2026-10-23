@@ -9,18 +9,22 @@
 /* Begin PBXBuildFile section */
 		00035BDD849D6B37BFE93A5A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4DE8C520A20B66651FF84566 /* InfoPlist.strings */; };
 		02D962567046EA7476727DED /* TunnelDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F64D1707992B2D2CE74D05 /* TunnelDiagnostics.swift */; };
+		06C69748E3D54494D66E596E /* RouteWorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F745775F1C878A824BED1AB2 /* RouteWorkspaceStore.swift */; };
 		07302A1CB3841BCBC0C6ED4D /* SetupBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8FBF6A70399DD56B3F563F /* SetupBackground.swift */; };
 		0C1225F6AE834F63A1DF01BF /* PlacesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F517ED9265DCEEED39673E0B /* PlacesView.swift */; };
 		0C78ABD1E0B70A0732F7EE2F /* PairOnDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE84038C9223A84BAFFAE233 /* PairOnDeviceView.swift */; };
 		0C9AD8196EA8C1D8B42AACC2 /* IconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1321490F7FFE9259002E39 /* IconButton.swift */; };
+		0E7EBE3471DB0AF8CF29E59F /* RouteDisplayGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F63B359E89CAA2D611E8BA /* RouteDisplayGeometry.swift */; };
 		100E47AFC0C3F7F3EECF9C2B /* GPXCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC31B0A00F0E2028010D329 /* GPXCodec.swift */; };
 		170627CC7AAA8335B2A3277F /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = D8943CD40A866E202F7964F6 /* AppIcon.icon */; };
 		1A9609434342E76342B42B54 /* LocusEasterEggView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 361C48381EA09BB299BD110E /* LocusEasterEggView.swift */; };
 		1CBCD6A08AA473AB0CB526CA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA9F9A2A821575AEE768E67 /* Theme.swift */; };
+		1EC8F55B4DAFF6CA2ECFEA14 /* PairingAudioPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A8A6B4A5F1975036CAFA09 /* PairingAudioPolicy.swift */; };
 		287645A724385E07F3C65F44 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 1C5456B6B3DD4657F5CEC8BF /* README.md */; };
 		2D719677D77D851D73D2BA60 /* PairingDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6BE765DFC4FB848609C8AA /* PairingDocumentPicker.swift */; };
 		31D7B14BBAF17E6622238175 /* NaturalEarth-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = B3FEDEDA5031C8C82F2A67F4 /* NaturalEarth-LICENSE.txt */; };
 		36CB5AC4DE6C8240A439CC94 /* MapSearchResults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729C497520870F1624BC543F /* MapSearchResults.swift */; };
+		39D79CA0CFD72DB4FFCB1D52 /* DiagnosticHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91A97E3C5BC0419453011858 /* DiagnosticHistory.swift */; };
 		39FCB8C0E7050B9161E600C6 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1C1367D937C33DF4F1FBE6 /* SettingsView.swift */; };
 		3F84179EF76E8AA074797361 /* SavedPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799094E9B1F051BEAD82D2C1 /* SavedPlace.swift */; };
 		41622C4D112CF14318210A71 /* PairOnDeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BC5277FD75A01A31B9830D /* PairOnDeviceService.swift */; };
@@ -54,6 +58,7 @@
 		B72D90E372487512692DA453 /* RoutePlaybackCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648D0F40C442FAD22F64A875 /* RoutePlaybackCore.swift */; };
 		BAADBB65BD9C17F6F3B78C80 /* LatestOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2F583DC0E8644F0C6F38AC /* LatestOperation.swift */; };
 		BAEFD7E4233656D9AE09F7EC /* CoordinateTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D2BB8E764869195639096 /* CoordinateTransform.swift */; };
+		BC9FE9F290687AD683EDC976 /* FreshEndpointRestorationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49B38AE9C79741AB6FD35132 /* FreshEndpointRestorationPolicy.swift */; };
 		C259998E5B73657AFB84689E /* SetupComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFEBB3F5FF14F263B046F6FF /* SetupComponents.swift */; };
 		C3196BF77229BADACEFD28EB /* NativeLocationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFD3FF900166D643C5A499D /* NativeLocationTransport.swift */; };
 		C446FF335B5347C98AAB59BB /* FreshLocationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6949B1F24E440172C9FDEAC1 /* FreshLocationController.swift */; };
@@ -79,6 +84,7 @@
 
 /* Begin PBXFileReference section */
 		03DE64DA7097F210F1075553 /* LocusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocusApp.swift; sourceTree = "<group>"; };
+		07F63B359E89CAA2D611E8BA /* RouteDisplayGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDisplayGeometry.swift; sourceTree = "<group>"; };
 		089666A192702451A2BFC22A /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		093774B56BE6B5E062C7BA34 /* MapSearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchBar.swift; sourceTree = "<group>"; };
 		0E1C1367D937C33DF4F1FBE6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -95,6 +101,7 @@
 		3B51D4F370EFC220A54A082F /* Locus.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Locus.entitlements; sourceTree = "<group>"; };
 		429366C3732ACF4031A7006B /* SetupFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupFlowView.swift; sourceTree = "<group>"; };
 		42EB44B227D666741F2C2AB6 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		49B38AE9C79741AB6FD35132 /* FreshEndpointRestorationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreshEndpointRestorationPolicy.swift; sourceTree = "<group>"; };
 		4BA1A27640843EEFE60957D3 /* RouteDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDocument.swift; sourceTree = "<group>"; };
 		5415BEF759B8C8AF04096B3E /* BackgroundKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAlive.swift; sourceTree = "<group>"; };
 		56FC05E4879D1CD07DD2B6FE /* RouteGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteGeometry.swift; sourceTree = "<group>"; };
@@ -110,6 +117,7 @@
 		6DF917A85B507FDDCF382E2F /* SilentAudioKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentAudioKeepAlive.swift; sourceTree = "<group>"; };
 		723D2BB8E764869195639096 /* CoordinateTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateTransform.swift; sourceTree = "<group>"; };
 		729C497520870F1624BC543F /* MapSearchResults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchResults.swift; sourceTree = "<group>"; };
+		76A8A6B4A5F1975036CAFA09 /* PairingAudioPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingAudioPolicy.swift; sourceTree = "<group>"; };
 		7977CA785FF0B09F4F88DE7D /* PairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingStore.swift; sourceTree = "<group>"; };
 		797AA07D5CE5A7FD9D385F5F /* MapDropPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDropPin.swift; sourceTree = "<group>"; };
 		797E3969E09F8AF4167BDE07 /* TunnelPreparationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelPreparationPolicy.swift; sourceTree = "<group>"; };
@@ -121,6 +129,7 @@
 		8EA9F9A2A821575AEE768E67 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		8EC31B0A00F0E2028010D329 /* GPXCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPXCodec.swift; sourceTree = "<group>"; };
 		9000A4BA362E455F472EFF41 /* PlaybackClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackClock.swift; sourceTree = "<group>"; };
+		91A97E3C5BC0419453011858 /* DiagnosticHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticHistory.swift; sourceTree = "<group>"; };
 		91E2EBD3F6F937176E4EC13F /* DeviceTunnel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTunnel.swift; sourceTree = "<group>"; };
 		91EA06492DD888E966A178C1 /* SetupVPNPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupVPNPage.swift; sourceTree = "<group>"; };
 		9A2F583DC0E8644F0C6F38AC /* LatestOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatestOperation.swift; sourceTree = "<group>"; };
@@ -149,6 +158,7 @@
 		E9B55FE96F843650682F7B2A /* NativeRequestControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRequestControl.swift; sourceTree = "<group>"; };
 		F517ED9265DCEEED39673E0B /* PlacesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesView.swift; sourceTree = "<group>"; };
 		F714A23C4C718E67E978565F /* MapHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapHomeView.swift; sourceTree = "<group>"; };
+		F745775F1C878A824BED1AB2 /* RouteWorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteWorkspaceStore.swift; sourceTree = "<group>"; };
 		FE9BF680256F4FF39E4FECB0 /* idevice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = idevice.h; sourceTree = "<group>"; };
 		FF1AF0F32E88B4227CA45694 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		FF983473C51CF5BC96331E82 /* TunnelPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelPolicy.swift; sourceTree = "<group>"; };
@@ -276,6 +286,8 @@
 				5415BEF759B8C8AF04096B3E /* BackgroundKeepAlive.swift */,
 				723D2BB8E764869195639096 /* CoordinateTransform.swift */,
 				91E2EBD3F6F937176E4EC13F /* DeviceTunnel.swift */,
+				91A97E3C5BC0419453011858 /* DiagnosticHistory.swift */,
+				49B38AE9C79741AB6FD35132 /* FreshEndpointRestorationPolicy.swift */,
 				6949B1F24E440172C9FDEAC1 /* FreshLocationController.swift */,
 				8EC31B0A00F0E2028010D329 /* GPXCodec.swift */,
 				9A2F583DC0E8644F0C6F38AC /* LatestOperation.swift */,
@@ -288,14 +300,17 @@
 				ACC2AC17057EA04E73E1057A /* OfflineMainlandCoverage.swift */,
 				AD401B2BF295561897BDABE6 /* PairableHostAdvertiser.swift */,
 				D53CADB7B9903496AAB51A58 /* PairingAttemptPolicy.swift */,
+				76A8A6B4A5F1975036CAFA09 /* PairingAudioPolicy.swift */,
 				B907784BADF56530D12A4BD8 /* PairingFileValidator.swift */,
 				7977CA785FF0B09F4F88DE7D /* PairingStore.swift */,
 				E2BC5277FD75A01A31B9830D /* PairOnDeviceService.swift */,
 				9000A4BA362E455F472EFF41 /* PlaybackClock.swift */,
 				1FC0C702516F159A7EF6D853 /* RouteBuilder.swift */,
+				07F63B359E89CAA2D611E8BA /* RouteDisplayGeometry.swift */,
 				4BA1A27640843EEFE60957D3 /* RouteDocument.swift */,
 				56FC05E4879D1CD07DD2B6FE /* RouteGeometry.swift */,
 				648D0F40C442FAD22F64A875 /* RoutePlaybackCore.swift */,
+				F745775F1C878A824BED1AB2 /* RouteWorkspaceStore.swift */,
 				19C9740552C7F66E1F0A0F5E /* SessionRecoveryPolicy.swift */,
 				BA7A0C384E1A460F1C906898 /* SessionRuntime.swift */,
 				6DF917A85B507FDDCF382E2F /* SilentAudioKeepAlive.swift */,
@@ -438,6 +453,8 @@
 				E30FEE0AACABE2C99FE2A814 /* CoordinateSettings.swift in Sources */,
 				BAEFD7E4233656D9AE09F7EC /* CoordinateTransform.swift in Sources */,
 				4A19A245C3B57EB4E5B02CDE /* DeviceTunnel.swift in Sources */,
+				39D79CA0CFD72DB4FFCB1D52 /* DiagnosticHistory.swift in Sources */,
+				BC9FE9F290687AD683EDC976 /* FreshEndpointRestorationPolicy.swift in Sources */,
 				C446FF335B5347C98AAB59BB /* FreshLocationController.swift in Sources */,
 				100E47AFC0C3F7F3EECF9C2B /* GPXCodec.swift in Sources */,
 				0C9AD8196EA8C1D8B42AACC2 /* IconButton.swift in Sources */,
@@ -463,6 +480,7 @@
 				0C78ABD1E0B70A0732F7EE2F /* PairOnDeviceView.swift in Sources */,
 				83D63478BF012E572D329843 /* PairableHostAdvertiser.swift in Sources */,
 				CD65C0CC8AFBE839576CF8E8 /* PairingAttemptPolicy.swift in Sources */,
+				1EC8F55B4DAFF6CA2ECFEA14 /* PairingAudioPolicy.swift in Sources */,
 				2D719677D77D851D73D2BA60 /* PairingDocumentPicker.swift in Sources */,
 				E790EA69C7397407550235C8 /* PairingFileValidator.swift in Sources */,
 				AC1BBA0F82E89EB56800992E /* PairingStore.swift in Sources */,
@@ -472,10 +490,12 @@
 				E32BE1B646566241437D6ED4 /* PlaybackClock.swift in Sources */,
 				B10A777C5622EE884A890643 /* RootView.swift in Sources */,
 				8EAFB147F0F0E2AAE207D276 /* RouteBuilder.swift in Sources */,
+				0E7EBE3471DB0AF8CF29E59F /* RouteDisplayGeometry.swift in Sources */,
 				B3B52473439D2173D79EC340 /* RouteDocument.swift in Sources */,
 				ADBC41639C847F54446371DB /* RouteGeometry.swift in Sources */,
 				87B0D41458D6AF0D39C9AAA4 /* RoutePlannerSheet.swift in Sources */,
 				B72D90E372487512692DA453 /* RoutePlaybackCore.swift in Sources */,
+				06C69748E3D54494D66E596E /* RouteWorkspaceStore.swift in Sources */,
 				3F84179EF76E8AA074797361 /* SavedPlace.swift in Sources */,
 				D3B27A0103054A32735C5984 /* SessionRecoveryPolicy.swift in Sources */,
 				9C3937D519EE9A84696DF085 /* SessionRuntime.swift in Sources */,
@@ -584,7 +604,7 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -595,7 +615,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
@@ -603,7 +623,7 @@
 					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ghb997.location;
-				PRODUCT_NAME = Locus;
+				PRODUCT_NAME = location;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/idevice";
@@ -684,7 +704,7 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -695,7 +715,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
@@ -703,7 +723,7 @@
 					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ghb997.location;
-				PRODUCT_NAME = Locus;
+				PRODUCT_NAME = location;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/idevice";
