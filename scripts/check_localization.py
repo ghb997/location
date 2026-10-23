@@ -40,6 +40,7 @@ def main():
     assert used <= chinese.keys(), f"Missing keys: {used - chinese.keys()}"
     for language in ["en", "zh-Hans"]:
         info = strings(resources / f"{language}.lproj/InfoPlist.strings")
+        assert info.get("CFBundleDisplayName") == "location", f"Unexpected app name for {language}"
         for key in ["CFBundleDisplayName", "NSLocalNetworkUsageDescription", "NSLocationWhenInUseUsageDescription", "NSLocationAlwaysAndWhenInUseUsageDescription"]:
             assert info.get(key), f"Missing {language} permission: {key}"
     with (resources / "Info.plist").open("rb") as handle:

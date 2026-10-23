@@ -344,3 +344,4 @@
 "location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI." = "location 基于 ChrisMack32 的开源项目 Locus（MIT 许可），由 ghb997 维护中文适配与改进。定位模拟使用同为 MIT 许可的 idevice FFI。";
 "location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location 需要先完成一次配对，才能修改定位。请在系统设置中输入配对码确认。";
 "location · A place of your choosing." = "location · 选择你想去的地方。";
+"Export preserved recovery data" = "导出保留的恢复数据";

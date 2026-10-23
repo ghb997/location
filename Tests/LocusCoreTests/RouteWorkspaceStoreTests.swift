@@ -144,7 +144,8 @@ final class RouteWorkspaceStoreTests: XCTestCase {
                     default: break
                     }
                     object["snapshot"] = snapshot
-                    object["confirmed"] = damage == "nilConfirmed" ? NSNull() : sample
+                    if damage == "nilConfirmed" { object["confirmed"] = NSNull() }
+                    else { object["confirmed"] = sample }
                 }
                 let raw = defaults.data(forKey: self.checkpointKey)
                 let loaded = await store.load()
@@ -164,7 +165,7 @@ final class RouteWorkspaceStoreTests: XCTestCase {
             store.saveRoute(original, includeArchive: true)
             await store.flush()
             let archive = try XCTUnwrap(defaults.data(forKey: self.archiveKey))
-            for damage in ["distance", "zeroTime", "nonzeroOrigin", "wrongPoint", "badProgress", "wrongTotal"] {
+            for damage in ["distance", "zeroTime", "impossibleTime", "nonzeroOrigin", "wrongPoint", "badProgress", "wrongTotal"] {
                 defaults.set(archive, forKey: self.archiveKey)
                 try self.mutate(self.archiveKey, defaults: defaults) { object in
                     var core = try XCTUnwrap(object["core"] as? [String: Any])
@@ -173,6 +174,7 @@ final class RouteWorkspaceStoreTests: XCTestCase {
                     switch damage {
                     case "distance": plans[0]["cumulativeDistance"] = [0, 999]
                     case "zeroTime": plans[0]["cumulativeTime"] = [0, 0]
+                    case "impossibleTime": plans[0]["cumulativeTime"] = [0, 1_000_000]
                     case "nonzeroOrigin": plans[0]["cumulativeTime"] = [1, 100]
                     case "wrongPoint": plans[0]["points"] = [["latitude": 0, "longitude": 1], ["latitude": 0, "longitude": 2]]
                     case "badProgress": snapshot["progress"] = 0.5

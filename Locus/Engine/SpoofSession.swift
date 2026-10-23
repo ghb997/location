@@ -1005,8 +1005,15 @@ final class SpoofSession: ObservableObject {
         reloadPlaces()
     }
 
-    func exportDamagedPlaces(recent: Bool) -> URL? {
-        guard let data = SavedPlace.rawDataForExport(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) else { return nil }
+    func hasArchivedPlaceData(recent: Bool) -> Bool {
+        SavedPlace.preservedCorruptData(key: recent ? recentsKey : favoritesKey, defaults: runtime.preferences) != nil
+    }
+
+    func exportDamagedPlaces(recent: Bool, archived: Bool = false) -> URL? {
+        let key = recent ? recentsKey : favoritesKey
+        let raw = archived ? SavedPlace.preservedCorruptData(key: key, defaults: runtime.preferences)
+            : SavedPlace.rawDataForExport(key: key, defaults: runtime.preferences)
+        guard let data = raw else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("location-places-\(UUID().uuidString).json")
         do { try data.write(to: url, options: .atomic); return url }
         catch { lastError = error.localizedDescription; return nil }

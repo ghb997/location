@@ -27,6 +27,9 @@ struct PlacesView: View {
                     }
                 }
                 Section(L10n.tr("Favorites")) {
+                    if !session.favoritesNeedRecovery && session.hasArchivedPlaceData(recent: false) {
+                        Button(L10n.tr("Export preserved recovery data")) { recoveryExport = session.exportDamagedPlaces(recent: false, archived: true) }
+                    }
                     if session.favorites.isEmpty && !session.favoritesNeedRecovery {
                         Text(L10n.tr("Star a pin from the map to save it."))
                             .foregroundStyle(.secondary)
@@ -63,6 +66,9 @@ struct PlacesView: View {
                 }
 
                 Section(L10n.tr("Recents")) {
+                    if !session.recentsNeedRecovery && session.hasArchivedPlaceData(recent: true) {
+                        Button(L10n.tr("Export preserved recovery data")) { recoveryExport = session.exportDamagedPlaces(recent: true, archived: true) }
+                    }
                     if session.recents.isEmpty && !session.recentsNeedRecovery {
                         Text(L10n.tr("Teleports show up here."))
                             .foregroundStyle(.secondary)

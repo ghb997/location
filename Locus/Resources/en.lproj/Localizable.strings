@@ -344,3 +344,4 @@
 "location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI." = "location is based on ChrisMack32’s open-source Locus project (MIT), with localization and improvements maintained by ghb997. Location simulation uses the MIT-licensed idevice FFI.";
 "location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings." = "location needs a one-time pairing so it can set your location. You’ll confirm a short code in Settings.";
 "location · A place of your choosing." = "location · A place of your choosing.";
+"Export preserved recovery data" = "Export preserved recovery data";

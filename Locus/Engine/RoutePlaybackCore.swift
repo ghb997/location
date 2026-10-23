@@ -115,7 +115,8 @@ struct RoutePlaybackCore: Codable, Sendable {
                 let archivedDistance = plan.cumulativeDistance[index] - plan.cumulativeDistance[index - 1]
                 let elapsed = plan.cumulativeTime[index] - plan.cumulativeTime[index - 1]
                 guard archivedDistance >= 0, abs(archivedDistance - distance) < 0.01,
-                      elapsed >= 0, distance <= 0.01 || elapsed > 0 else { return false }
+                      elapsed >= 0, elapsed <= distance / 0.8 + 0.01,
+                      distance <= 0.01 || elapsed > 0 else { return false }
             }
         }
         // An archive itself can contain progress (for example when rolling back

@@ -73,6 +73,76 @@ final class SessionIntegrationTests: XCTestCase {
         await reopened.flushRoutePersistence()
     }
 
+    func testInvalidReplacementRouteRestoresPreviousProgressPausedUntilExplicitResume() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        let previous = RouteTrack(coordinates: [origin, .init(latitude: 31.24, longitude: 121.48)])
+        rig.session.followRoute(previous, pairing: rig.pairing)
+        await waitFor { rig.session.routeState == .playing && rig.clock.pendingCount >= 2 }
+        await advance(rig, by: 0.5)
+        await waitFor { rig.session.routePlayback.completedDistance > 0 && !rig.session.isBusy }
+        let distance = rig.session.routePlayback.completedDistance
+        let confirmed = rig.session.simulated.map(RoutePoint.init)
+        let writesBeforeReplacement = rig.transport.writes.count
+        let invalid = RouteTrack(coordinates: [origin, .init(latitude: 95, longitude: 121.48)])
+
+        rig.session.followRoute(invalid, pairing: rig.pairing)
+        await waitFor { rig.session.currentRoute?.id == previous.id && !rig.session.isBusy && rig.session.lastError != nil }
+        XCTAssertEqual(rig.session.routeState, .paused)
+        XCTAssertEqual(rig.session.routePlayback.completedDistance, distance)
+        XCTAssertEqual(rig.session.simulated.map(RoutePoint.init), confirmed)
+        await advance(rig, by: 1)
+        XCTAssertEqual(rig.transport.writes.count, writesBeforeReplacement)
+        await rig.session.flushRoutePersistence()
+        let saved = await RouteWorkspaceStore(defaults: rig.defaults).load()
+        XCTAssertEqual(saved.core?.track.id, previous.id)
+        XCTAssertEqual(saved.core?.snapshot.status, .paused)
+        XCTAssertEqual(saved.core?.snapshot.completedDistance, distance)
+
+        rig.session.resumeRoute(pairing: rig.pairing)
+        await waitFor { rig.session.routeState == .playing && rig.transport.writes.count == writesBeforeReplacement + 1 }
+        XCTAssertEqual(rig.transport.writes.last?.point, confirmed)
+    }
+
+    func testImmediateStopBeforeReopenedWorkspaceLoadsPreservesConfirmedRoute() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        let track = RouteTrack(coordinates: [origin, .init(latitude: 31.24, longitude: 121.48)])
+        rig.session.draftTrack = track
+        rig.session.followRoute(track, pairing: rig.pairing)
+        await waitFor { rig.session.routeState == .playing && rig.clock.pendingCount >= 2 }
+        await advance(rig, by: 0.5)
+        await waitFor { rig.session.routePlayback.completedDistance > 0 }
+        rig.session.pauseRoute()
+        await waitFor { rig.session.routeState == .paused }
+        await rig.session.flushRoutePersistence()
+        let distance = rig.session.routePlayback.completedDistance
+        let archivedData = rig.defaults.data(forKey: "location.routeArchive.v1")
+        let checkpointData = rig.defaults.data(forKey: "location.routeCheckpoint.v1")
+        XCTAssertNotNil(archivedData)
+        XCTAssertTrue(rig.store.hasPendingRecord)
+        let transport = SessionTestTransport()
+        let reopened = SpoofSession(clock: rig.clock.playbackClock, restorationStore: rig.store, transport: transport,
+            runtime: SessionRuntime(locationKeeper: SessionTestKeeper(), monitorsNetwork: false,
+                sendsNotifications: false, preferences: rig.defaults, targetIP: { "10.7.0.1" }))
+
+        // Do not yield between init and Stop: the MainActor workspace loader
+        // cannot yet have applied its asynchronous result.
+        XCTAssertNil(reopened.currentRoute)
+        reopened.stop(pairing: rig.pairing)
+        await waitFor { reopened.status == .idle && reopened.currentRoute != nil }
+        await reopened.flushRoutePersistence()
+        XCTAssertEqual(reopened.currentRoute?.id, track.id)
+        XCTAssertEqual(reopened.draftTrack?.id, track.id)
+        XCTAssertEqual(reopened.routeState, .paused)
+        XCTAssertEqual(reopened.routePlayback.completedDistance, distance)
+        XCTAssertTrue(transport.writes.isEmpty)
+        XCTAssertEqual(transport.clears.count, 1)
+        XCTAssertFalse(rig.store.hasPendingRecord)
+        XCTAssertEqual(rig.defaults.data(forKey: "location.routeArchive.v1"), archivedData)
+        XCTAssertEqual(rig.defaults.data(forKey: "location.routeCheckpoint.v1"), checkpointData)
+    }
+
     func testForegroundRecoversAfterRetryExhaustionAndRestartsHeartbeat() async {
         let rig = SessionRig()
         defer { rig.dispose() }
