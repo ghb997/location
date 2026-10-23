@@ -1,8 +1,8 @@
-# Locus 定位 · 简体中文版
+# location · 简体中文版
 
 基于 [ChrisMack32/Locus](https://github.com/ChrisMack32/Locus) 的中文适配与稳定性改进版本，由 [ghb997/location](https://github.com/ghb997/location) 维护。保留原作者提交历史与 MIT 许可；此仓库是独立衍生版本。
 
-Locus 使用 Apple 开发者定位模拟服务修改系统报告的位置，支持地图选点、地点搜索、摇杆移动、路线及 GPX 导入导出。
+location 使用 Apple 开发者定位模拟服务修改系统报告的位置，支持地图选点、地点搜索、摇杆移动、路线及 GPX 导入导出。
 
 ## 下载与使用
 
@@ -10,14 +10,26 @@ Locus 使用 Apple 开发者定位模拟服务修改系统报告的位置，支�
 - [中文安装指南](SETUP.md)
 - [自动构建记录与临时下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
-- [1.1.1 变更说明](docs/CHANGELOG.zh-CN.md)
+- [1.2.0 变更说明](docs/CHANGELOG.zh-CN.md)
 - [兼容性与真机验收记录](docs/COMPATIBILITY.zh-CN.md)
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
 
-发布的 `Locus-1.1.1-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
+发布的 `location-1.2.0-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
 
 中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及可达的回环开发者隧道**。推荐使用 LocalDevVPN；其他工具以实际连通检查为准。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
+
+## 1.2.0 液态玻璃与恢复完善
+
+- 应用名称统一为 **location**，版本 1.2.0（7），Bundle ID 保持不变。
+- iOS 26 及更新系统使用系统 Liquid Glass；iOS 18–25 使用半透明材质。降低透明度时采用实色面板，并适配增强对比度、减少动态效果及较大字号。
+- 收藏损坏时保护原始数据，提供导出、有效备份恢复和明确确认后的新建列表。
+- 搜索、手动输入、收藏与路线共享目标版本，防止迟到结果覆盖新目标。
+- 停止清除失败后重新发现端口再重连清除；保留脱敏诊断事件与失败历史。
+- 路线草稿及最后确认进度持久化，重开保持暂停；大型 GPX 显示几何与距离在后台按路线变化准备。
+- 配对静音保活处理音频中断和媒体服务重置；隐私说明明确 Apple 地图网络请求。
+
+界面视觉、配对及后台效果仍待真机验收，详见[构建验证](docs/BUILD.zh-CN.md)和[兼容性记录](docs/COMPATIBILITY.zh-CN.md)。
 
 ## 1.1.1 稳定性修复
 
@@ -75,7 +87,7 @@ xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
 ```bash
 python3 scripts/check_localization.py
 swift test
-python3 scripts/verify_ipa.py /path/to/Locus-1.1.1-zh-Hans-unsigned.ipa
+python3 scripts/verify_ipa.py /path/to/location-1.2.0-zh-Hans-unsigned.ipa
 ```
 
 `swift test` 在 macOS 上运行 GPX、坐标和配对格式的回归测试，不依赖真机 FFI。完整 iOS 编译由 Actions 验证。编译和静态检查不能替代真机上的定位、恢复真实 GPS、后台运行和各签名工具兼容性测试。
