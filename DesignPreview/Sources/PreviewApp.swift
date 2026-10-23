@@ -73,9 +73,10 @@ private struct ComponentPreview: View {
         }
         .background(LocusTheme.canvas.ignoresSafeArea())
         .foregroundStyle(LocusTheme.ink)
-        .task { recordObservedEnvironment() }
+        .onAppear { recordObservedEnvironment() }
         .onChange(of: reduceTransparency) { _, _ in recordObservedEnvironment() }
         .onChange(of: reduceMotion) { _, _ in recordObservedEnvironment() }
+        .onChange(of: colorScheme) { _, _ in recordObservedEnvironment() }
     }
 
     private func recordObservedEnvironment() {

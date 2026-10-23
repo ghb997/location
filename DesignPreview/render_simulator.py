@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -48,6 +49,55 @@ def available_targets() -> tuple[dict, list[tuple[str, dict]]]:
     raise RuntimeError("No available iOS 26 runtime contains both an iPhone and iPad simulator.")
 
 
+def wait_for_environment(path: Path, timeout: float = 90) -> dict:
+    """First Simulator launch can take much longer than simctl launch returning."""
+    deadline = time.monotonic() + timeout
+    print(f"Waiting up to {timeout:g}s for app-rendered environment evidence: {path.name}", flush=True)
+    while True:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                return value
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"App did not produce valid environment evidence within {timeout:g}s: {path}")
+        time.sleep(min(2, remaining))
+
+
+def collect_failure_evidence(udid: str, prefix: str, output: Path, error: Exception) -> None:
+    """Best-effort diagnostics must never mask the original rendering failure."""
+    (output / f"{prefix}-failure.txt").write_text(repr(error) + "\n", encoding="utf-8")
+    commands = [
+        ("screenshot", ["xcrun", "simctl", "io", udid, "screenshot", str(output / f"{prefix}-failure.png")]),
+        ("app-log", ["xcrun", "simctl", "spawn", udid, "log", "show", "--style", "compact", "--last", "3m",
+                     "--predicate", 'process == "LocationDesignPreview"']),
+    ]
+    for name, command in commands:
+        try:
+            result = subprocess.run(command, check=False, text=True, capture_output=True, timeout=30)
+            (output / f"{prefix}-{name}.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+        except Exception as diagnostic_error:
+            (output / f"{prefix}-{name}.log").write_text(repr(diagnostic_error) + "\n", encoding="utf-8")
+    crash_roots = [
+        Path.home() / "Library/Logs/DiagnosticReports",
+        Path.home() / "Library/Developer/CoreSimulator/Devices" / udid / "data/Library/Logs/CrashReporter",
+    ]
+    copied = []
+    for root in crash_roots:
+        try:
+            reports = sorted((path for path in root.rglob("LocationDesignPreview*") if path.is_file()),
+                             key=lambda path: path.stat().st_mtime, reverse=True)[:5]
+            for report in reports:
+                destination = output / f"{prefix}-crash-{len(copied)}-{report.name}"
+                shutil.copy2(report, destination)
+                copied.append(destination.name)
+        except OSError as diagnostic_error:
+            print(f"Crash report collection: {diagnostic_error}", flush=True)
+    print(f"Saved failure screenshot/log attempts and {len(copied)} crash reports for {prefix}.", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", required=True, type=Path)
@@ -72,6 +122,7 @@ def main() -> None:
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for family, device in targets:
         udid = device["udid"]
+        active_scenario = "setup"
         try:
             if device["state"] != "Booted":
                 run("xcrun", "simctl", "boot", udid)
@@ -84,13 +135,18 @@ def main() -> None:
             run("xcrun", "simctl", "spawn", udid, "defaults", "write", "com.apple.Accessibility", "ReduceMotionEnabled", "-bool", "true")
             run("xcrun", "simctl", "install", udid, str(app))
             container = Path(run("xcrun", "simctl", "get_app_container", udid, BUNDLE_ID, "data").strip())
+            if not container.is_dir():
+                raise RuntimeError(f"Simulator data container does not exist: {container}")
             for scenario in SCENARIOS:
+                active_scenario = scenario
                 reduced = scenario == "reduced-transparency"
-                run("xcrun", "simctl", "spawn", udid, "defaults", "write", "com.apple.Accessibility", "ReduceTransparencyEnabled", "-bool", str(reduced).lower())
+                environment_path = container / "Documents" / f"preview-environment-{scenario}.json"
+                environment_path.unlink(missing_ok=True)
+                # Matches appium-ios-simulator's setReduceTransparency preference.
+                run("xcrun", "simctl", "spawn", udid, "defaults", "write", "com.apple.Accessibility", "EnhancedBackgroundContrastEnabled", "-int", str(int(reduced)))
                 run("xcrun", "simctl", "launch", "--terminate-running-process", udid, BUNDLE_ID,
                     "--scenario", scenario, "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN")
-                time.sleep(3)
-                observed = json.loads((container / "Documents" / f"preview-environment-{scenario}.json").read_text())
+                observed = wait_for_environment(environment_path)
                 (output / f"{family}-{scenario}-environment.json").write_text(json.dumps(observed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 if observed.get("scenario") != scenario or observed.get("colorScheme") != "light":
                     raise RuntimeError(f"Wrong app scenario/appearance: {observed}")
@@ -100,6 +156,7 @@ def main() -> None:
                     raise RuntimeError(f"Chinese localization was not selected: {observed}")
                 if observed.get("isAccessibilitySize") != (scenario == "large-type"):
                     raise RuntimeError(f"Wrong Dynamic Type size: {observed}")
+                time.sleep(3)
                 filename = f"{family}-{scenario}.png"
                 screenshot = output / filename
                 run("xcrun", "simctl", "io", udid, "screenshot", str(screenshot))
@@ -115,6 +172,9 @@ def main() -> None:
                 })
                 (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 run("xcrun", "simctl", "terminate", udid, BUNDLE_ID)
+        except Exception as error:
+            collect_failure_evidence(udid, f"{family}-{active_scenario}", output, error)
+            raise
         finally:
             run("xcrun", "simctl", "shutdown", udid, check=False)
     print(f"Rendered {len(manifest['screenshots'])} simulator screenshots.", flush=True)
