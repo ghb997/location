@@ -2,7 +2,7 @@
 
 ## 1. 安装 IPA
 
-从[本仓库 Releases](https://github.com/ghb997/location/releases/latest) 下载对应版本的未签名 IPA。1.2.0 的文件名为 `location-1.2.0-zh-Hans-unsigned.ipa`；如正式版本尚未发布，可查看[自动构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)中的构建产物。
+从[本仓库 Releases](https://github.com/ghb997/location/releases/latest) 下载对应版本的未签名 IPA。1.2.1 的文件名为 `location-1.2.1-zh-Hans-unsigned.ipa`；如正式版本尚未发布，可查看[自动构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)中的构建产物。
 
 此包的 Bundle ID 为 `com.ghb997.location`，未包含个人签名证书，需用你已有的 SideStore、AltStore、Sideloadly、Feather 或其他可用签名工具重新签名，也可在兼容的 LiveContainer 环境中导入。侧载工具重新签名时可能调整标识，以实际安装包为准。
 
@@ -97,9 +97,11 @@ GPX 导入支持 XML 文件，最多 10 MB、50,000 个点，经纬度必须有�
 
 静态定位的三次重试耗尽后，网络变化或重返前台会重新检查连接并开始新一轮有限恢复。路线恢复连接后仍需手动继续。停止后若未收到新的系统定位，可在设置中查看获取状态并点击“刷新系统定位”。
 
-## 7. 1.2.0 的玻璃界面与数据恢复
+## 8. 浅色玻璃界面与数据恢复
 
-应用在主屏幕显示为 **location**，Bundle ID 仍为 `com.ghb997.location`。iOS 26 及更新系统使用原生 Liquid Glass；iOS 18–25 使用半透明材质。开启系统“降低透明度”时改为实色面板；增强对比度和减少动态效果设置也会被遵循。
+应用在主屏幕显示为 **location**，Bundle ID 仍为 `com.ghb997.location`。1.2.1 固定使用浅色界面，即使系统开启深色模式也不会切换。iOS 26 及更新系统使用原生 Liquid Glass；iOS 18–25 使用半透明材质。开启系统“降低透明度”时改为实色面板；增强对比度和减少动态效果设置也会被遵循。
+
+底部的模式、设置、地点和定位操作分别悬浮在地图上；运行期间“前往此位置”和“停止”始终是独立按钮。使用辅助字号时可上下滚动底部操作区；过长的搜索结果也可滚动，向下浏览时可交互式收起键盘。
 
 路线草稿及最后成功写入的进度保存在本机。应用重开不会自动继续移动；如果提示尚未恢复系统定位，先连接隧道并执行停止恢复，再手动继续路线。完成和等待下一段的路线保留对应状态，下一段仍需确认。
 

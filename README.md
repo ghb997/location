@@ -10,14 +10,25 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 - [中文安装指南](SETUP.md)
 - [自动构建记录与临时下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
-- [1.2.0 变更说明](docs/CHANGELOG.zh-CN.md)
+- [1.2.1 变更说明](docs/CHANGELOG.zh-CN.md)
+- [浅色液态玻璃设计参考](docs/GLASS-REFERENCES.zh-CN.md)
 - [兼容性与真机验收记录](docs/COMPATIBILITY.zh-CN.md)
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
 
-发布的 `location-1.2.0-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
+发布的 `location-1.2.1-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
 
 中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及可达的回环开发者隧道**。推荐使用 LocalDevVPN；其他工具以实际连通检查为准。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
+
+## 1.2.1 浅色液态玻璃
+
+- 全应用固定浅色，包括启动、地图、设置、引导和配对；系统深色模式下仍保持浅色。
+- 底部操作改为独立悬浮胶囊，让地图从间隙透出。iOS 26 使用公开的原生 Liquid Glass，iOS 18–25 使用轻薄材质、细边高光与柔和阴影。
+- 统一深色文字、青绿色主操作及红色停止按钮；降低透明度时使用实色表面。选中模式支持平滑切换，遵循减少动态效果设置。
+- 辅助字号下底部控件和过长搜索结果可滚动，保留独立的“前往此位置”与“停止”入口。
+- 增加 iPhone／iPad 生产组件的模拟器截图流程；合成地图和假会话仅用于界面渲染，不能代替完整应用或真机功能验收。
+
+详细构建、截图验证结果与待测范围见[构建记录](docs/BUILD.zh-CN.md)及[兼容性记录](docs/COMPATIBILITY.zh-CN.md)。
 
 ## 1.2.0 液态玻璃与恢复完善
 
@@ -87,7 +98,7 @@ xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
 ```bash
 python3 scripts/check_localization.py
 swift test
-python3 scripts/verify_ipa.py /path/to/location-1.2.0-zh-Hans-unsigned.ipa
+python3 scripts/verify_ipa.py /path/to/location-1.2.1-zh-Hans-unsigned.ipa
 ```
 
 `swift test` 在 macOS 上运行 GPX、坐标和配对格式的回归测试，不依赖真机 FFI。完整 iOS 编译由 Actions 验证。编译和静态检查不能替代真机上的定位、恢复真实 GPS、后台运行和各签名工具兼容性测试。

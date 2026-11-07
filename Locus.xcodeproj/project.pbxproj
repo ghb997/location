@@ -19,6 +19,7 @@
 		170627CC7AAA8335B2A3277F /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = D8943CD40A866E202F7964F6 /* AppIcon.icon */; };
 		1A9609434342E76342B42B54 /* LocusEasterEggView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 361C48381EA09BB299BD110E /* LocusEasterEggView.swift */; };
 		1CBCD6A08AA473AB0CB526CA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA9F9A2A821575AEE768E67 /* Theme.swift */; };
+		1DAAF600F1EB962FE104F541 /* MapBottomChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4926C4FA8E5F5204953E93 /* MapBottomChrome.swift */; };
 		1EC8F55B4DAFF6CA2ECFEA14 /* PairingAudioPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A8A6B4A5F1975036CAFA09 /* PairingAudioPolicy.swift */; };
 		287645A724385E07F3C65F44 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 1C5456B6B3DD4657F5CEC8BF /* README.md */; };
 		2D719677D77D851D73D2BA60 /* PairingDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6BE765DFC4FB848609C8AA /* PairingDocumentPicker.swift */; };
@@ -50,6 +51,7 @@
 		AB35A419877FF9CA0B4AB114 /* JoystickPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFF6D1EA6EBAAF543339FF81 /* JoystickPad.swift */; };
 		AC1BBA0F82E89EB56800992E /* PairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7977CA785FF0B09F4F88DE7D /* PairingStore.swift */; };
 		ADBC41639C847F54446371DB /* RouteGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FC05E4879D1CD07DD2B6FE /* RouteGeometry.swift */; };
+		B00A96954EDA079049D034AA /* RoutePlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AFCC12A928B2F8D10B2BA0F /* RoutePlaybackControls.swift */; };
 		B10A777C5622EE884A890643 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1AF0F32E88B4227CA45694 /* RootView.swift */; };
 		B12E919DBC4441E728577E16 /* LocationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CC0B2E89A908A2687F71A89 /* LocationTransport.swift */; };
 		B355263A22F1B745F8BBDBCE /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8BA483497993E4F3265C4E /* StatusBarView.swift */; };
@@ -123,6 +125,7 @@
 		797E3969E09F8AF4167BDE07 /* TunnelPreparationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelPreparationPolicy.swift; sourceTree = "<group>"; };
 		799094E9B1F051BEAD82D2C1 /* SavedPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlace.swift; sourceTree = "<group>"; };
 		79F64D1707992B2D2CE74D05 /* TunnelDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelDiagnostics.swift; sourceTree = "<group>"; };
+		7AFCC12A928B2F8D10B2BA0F /* RoutePlaybackControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlaybackControls.swift; sourceTree = "<group>"; };
 		7CC0B2E89A908A2687F71A89 /* LocationTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTransport.swift; sourceTree = "<group>"; };
 		892277BFCA6D228DCFD357BB /* mainland-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "mainland-coverage.json"; sourceTree = "<group>"; };
 		8AFD3FF900166D643C5A499D /* NativeLocationTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLocationTransport.swift; sourceTree = "<group>"; };
@@ -156,6 +159,7 @@
 		E21A7DEF19F1062B119AD509 /* BottomControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomControlsView.swift; sourceTree = "<group>"; };
 		E2BC5277FD75A01A31B9830D /* PairOnDeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairOnDeviceService.swift; sourceTree = "<group>"; };
 		E9B55FE96F843650682F7B2A /* NativeRequestControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRequestControl.swift; sourceTree = "<group>"; };
+		EA4926C4FA8E5F5204953E93 /* MapBottomChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapBottomChrome.swift; sourceTree = "<group>"; };
 		F517ED9265DCEEED39673E0B /* PlacesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesView.swift; sourceTree = "<group>"; };
 		F714A23C4C718E67E978565F /* MapHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapHomeView.swift; sourceTree = "<group>"; };
 		F745775F1C878A824BED1AB2 /* RouteWorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteWorkspaceStore.swift; sourceTree = "<group>"; };
@@ -206,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				E21A7DEF19F1062B119AD509 /* BottomControlsView.swift */,
+				EA4926C4FA8E5F5204953E93 /* MapBottomChrome.swift */,
 				797AA07D5CE5A7FD9D385F5F /* MapDropPin.swift */,
 				F714A23C4C718E67E978565F /* MapHomeView.swift */,
 				093774B56BE6B5E062C7BA34 /* MapSearchBar.swift */,
@@ -340,6 +345,7 @@
 			isa = PBXGroup;
 			children = (
 				D76779E56819A74B78236EF1 /* RoutePlannerSheet.swift */,
+				7AFCC12A928B2F8D10B2BA0F /* RoutePlaybackControls.swift */,
 			);
 			path = Routes;
 			sourceTree = "<group>";
@@ -466,6 +472,7 @@
 				B12E919DBC4441E728577E16 /* LocationTransport.swift in Sources */,
 				976D8B4B49C6B6588EA59B2F /* LocusApp.swift in Sources */,
 				1A9609434342E76342B42B54 /* LocusEasterEggView.swift in Sources */,
+				1DAAF600F1EB962FE104F541 /* MapBottomChrome.swift in Sources */,
 				C8CC0EF3E134ADF2BE9F995F /* MapDropPin.swift in Sources */,
 				D5613248D3DDD96C0D62BF7F /* MapHomeView.swift in Sources */,
 				A423663CC99BF7E7910E159D /* MapRouteSelection.swift in Sources */,
@@ -494,6 +501,7 @@
 				B3B52473439D2173D79EC340 /* RouteDocument.swift in Sources */,
 				ADBC41639C847F54446371DB /* RouteGeometry.swift in Sources */,
 				87B0D41458D6AF0D39C9AAA4 /* RoutePlannerSheet.swift in Sources */,
+				B00A96954EDA079049D034AA /* RoutePlaybackControls.swift in Sources */,
 				B72D90E372487512692DA453 /* RoutePlaybackCore.swift in Sources */,
 				06C69748E3D54494D66E596E /* RouteWorkspaceStore.swift in Sources */,
 				3F84179EF76E8AA074797361 /* SavedPlace.swift in Sources */,
@@ -604,7 +612,7 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -615,7 +623,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
@@ -704,7 +712,7 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -715,7 +723,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
