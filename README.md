@@ -10,16 +10,26 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 - [中文安装指南](SETUP.md)
 - [自动构建记录与临时下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
-- [1.2.1 变更说明](docs/CHANGELOG.zh-CN.md)
+- [1.3.0 变更说明](docs/CHANGELOG.zh-CN.md)
 - [浅色液态玻璃设计参考](docs/GLASS-REFERENCES.zh-CN.md)
 - [wloc 可借鉴点与技术对照](docs/WLOC-REVIEW.zh-CN.md)
 - [兼容性与真机验收记录](docs/COMPATIBILITY.zh-CN.md)
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
 
-发布的 `location-1.2.1-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
+发布的 `location-1.3.0-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
 
 中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及可达的回环开发者隧道**。推荐使用 LocalDevVPN；其他工具以实际连通检查为准。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
+
+## 1.3.0 目标预览与操作指引
+
+- 待应用地点卡片显示名称、可用地址、WGS-84 坐标和收藏状态，与当前模拟位置分开；清除卡片不会停止正在运行的定位。
+- 从收藏或最近记录选择地点后先回到地图预览，再点击“定位到选点”；连接暂不可用时也能准备目标。
+- 地图按顶部与底部控件的实际高度安排选点和路线视野；用户拖动后，迟到的搜索、路线和系统定位结果不会重新抢占视野。
+- 状态条显示未配对、连接检查、就绪、恢复等待等状态；问号入口提供对应步骤，并直接打开相应设置段。
+- 保持浅色原生玻璃，整理卡片、模式和操作的层次；短内容贴近底部，空间不足时固定停止按钮，其余内容可滚动。
+
+本轮构建与组件渲染结果见[构建记录](docs/BUILD.zh-CN.md)。模拟器使用合成地图及假会话，真机 MapKit、触摸、定位与后台验收范围见[兼容性记录](docs/COMPATIBILITY.zh-CN.md)。
 
 ## 1.2.1 浅色液态玻璃
 
@@ -99,7 +109,7 @@ xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
 ```bash
 python3 scripts/check_localization.py
 swift test
-python3 scripts/verify_ipa.py /path/to/location-1.2.1-zh-Hans-unsigned.ipa
+python3 scripts/verify_ipa.py /path/to/location-1.3.0-zh-Hans-unsigned.ipa
 ```
 
 `swift test` 在 macOS 上运行 GPX、坐标和配对格式的回归测试，不依赖真机 FFI。完整 iOS 编译由 Actions 验证。编译和静态检查不能替代真机上的定位、恢复真实 GPS、后台运行和各签名工具兼容性测试。
