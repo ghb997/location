@@ -1,7 +1,7 @@
 # location 1.2.1 构建与成品验证
 
-- 构建源码提交：`dd8e533d709fc8adcd6105748cb287c8d0b175dd`。
-- [成功的 GitHub Actions 构建](https://github.com/ghb997/location/actions/runs/40710002460)。
+- 构建源码提交：`627f6426a59f7bf620a766819b0891ff1a0dcd0d`。
+- [成功的 GitHub Actions 构建](https://github.com/ghb997/location/actions/runs/42338529009)。
 - 环境：GitHub macOS 15 runner，Xcode 26.3，iPhoneOS Release 设备构建。
 - **144 项 Swift 自动测试，0 失败**。覆盖路线与 GPX、坐标、配对校验、定位会话控制、恢复顺序、数据存档、地点损坏保护及 50,000 点路线显示准备。
 - **340 对中英文资源、315 个引用键**、本地化权限和 Info.plist 检查通过。基础及中英文显示名称均为精确的小写 `location`，浅色配置为 `UIUserInterfaceStyle = Light`。
@@ -13,7 +13,7 @@
 | 项目 | 验证结果 |
 | --- | --- |
 | 文件 | `location-1.2.1-zh-Hans-unsigned.ipa` |
-| 大小 | 5,040,039 字节 |
+| 大小 | 5,039,684 字节 |
 | 应用显示名称 / 可执行文件 | `location` / `location` |
 | Bundle ID | `com.ghb997.location` |
 | 版本 / 构建 | 1.2.1 / 8 |
@@ -28,14 +28,14 @@
 IPA SHA-256：
 
 ```text
-518bdc9370639523e982e386005bc2e67cd4f7735d6d3b83d3d39446c5e45d49
+a9666de631172301ad28405caf14a2306d9108ab38b6c0d827f710a620532881
 ```
 
 内部工程与 scheme 保留 `Locus` 名称，产品与应用显示名称为 `location`。原有 URL scheme 和存储键保留兼容性。Xcode 工程由此成功构建的 XcodeGen 输出同步；`project.yml` 仍为配置来源。工程生成文件和验证记录的后续提交不改变已验证的应用源码、测试或构建配置。
 
 ## 生产组件模拟器渲染
 
-[组件渲染工作流](https://github.com/ghb997/location/actions/runs/40710002478)通过，8 张截图的摘要与实际渲染结果已检查。
+[组件渲染工作流](https://github.com/ghb997/location/actions/runs/42338529003)通过，8 张截图的摘要与实际渲染结果已检查。
 
 | 检查项 | 结果 |
 | --- | --- |

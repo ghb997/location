@@ -12,6 +12,7 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
 - [1.2.1 变更说明](docs/CHANGELOG.zh-CN.md)
 - [浅色液态玻璃设计参考](docs/GLASS-REFERENCES.zh-CN.md)
+- [wloc 可借鉴点与技术对照](docs/WLOC-REVIEW.zh-CN.md)
 - [兼容性与真机验收记录](docs/COMPATIBILITY.zh-CN.md)
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
