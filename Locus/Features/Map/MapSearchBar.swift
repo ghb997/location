@@ -13,7 +13,8 @@ struct MapSearchBar: View {
                 .frame(width: 32, height: 32)
                 .background(LocusTheme.accent.opacity(0.09), in: Circle())
                 .accessibilityHidden(true)
-            TextField(L10n.tr("Search places"), text: $searchText)
+            TextField(L10n.tr("Search places"), text: $searchText,
+                      prompt: Text(L10n.tr("Search places")).foregroundStyle(LocusTheme.ink.opacity(0.7)))
                 .textInputAutocapitalization(.words)
                 .foregroundStyle(LocusTheme.ink)
                 .tint(LocusTheme.accent)

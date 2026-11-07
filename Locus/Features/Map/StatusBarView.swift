@@ -57,7 +57,7 @@ struct StatusBarView: View {
         if session.status == .active, let point = session.simulated {
             Text(String(format: "%.4f, %.4f", point.latitude, point.longitude))
                 .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(LocusTheme.ink.opacity(0.7))
                 .fixedSize()
         }
     }
