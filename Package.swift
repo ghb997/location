@@ -58,6 +58,8 @@ let package = Package(
                 "Engine/SessionRuntime.swift",
                 "Engine/FreshLocationController.swift",
                 "Engine/MapRouteSelection.swift",
+                "Engine/MapViewportGeometry.swift",
+                "Engine/ConnectionGuidePolicy.swift",
                 "Engine/CoordinateTransform.swift",
                 "Engine/OfflineMainlandCoverage.swift",
                 "Support/CoordinateSettings.swift",

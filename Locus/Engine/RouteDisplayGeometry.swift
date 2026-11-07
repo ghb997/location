@@ -10,6 +10,7 @@ struct RouteDisplayGeometry: Sendable {
     }
     let segments: [Segment]
     let remainingDistances: [Double]
+    let framingBounds: MapViewportBounds?
 
     init(track: RouteTrack, project: (CLLocationCoordinate2D) throws -> CLLocationCoordinate2D = { $0 }) throws {
         var rendered: [Segment] = []
@@ -29,5 +30,6 @@ struct RouteDisplayGeometry: Sendable {
         }
         segments = rendered
         remainingDistances = distances
+        framingBounds = MapViewportGeometry.bounds(rendered.flatMap(\.coordinates))
     }
 }

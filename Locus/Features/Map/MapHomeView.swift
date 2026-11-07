@@ -2,6 +2,8 @@ import MapKit
 import SwiftUI
 
 struct MapHomeView: View {
+    var bottomOverlayHeight: CGFloat = 0
+    var onHelp: () -> Void = {}
     @EnvironmentObject private var session: SpoofSession
     @EnvironmentObject private var pairing: PairingStore
     @AppStorage(CoordinateSettings.mapKey) private var mapCoordinateSystem = "wgs84"
@@ -10,6 +12,15 @@ struct MapHomeView: View {
     @State private var routeGeometry: RouteDisplayGeometry?
     @State private var geometryRevision = ""
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var mapSize: CGSize = .zero
+    @State private var topOverlayHeight: CGFloat = 0
+    @State private var topContentHeight: CGFloat = 200
+    @State private var framing: Framing?
+    @State private var routeTargetRevision: UInt64?
+    @State private var cameraIntentRevision: UInt64 = 0
+    @State private var pendingFramingRevision: UInt64?
+    @State private var awaitingCurrentLocation = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
     @State private var routeStart: CLLocationCoordinate2D?
@@ -33,9 +44,7 @@ struct MapHomeView: View {
     @State private var pinSelected = false
     @State private var isDraggingPin = false
     @State private var suppressNextMapTap = false
-    /// Set when the pin comes from search / a named place so starring keeps the title.
-    @State private var pinPlaceName: String?
-    @State private var namedPinCoordinate: CLLocationCoordinate2D?
+    private enum Framing { case point(RoutePoint, Double), route }
 
     private var mapStyle: MapStyle {
         switch session.mapStyleIndex {
@@ -105,6 +114,7 @@ struct MapHomeView: View {
                                 },
                                 onDragEnded: {
                                     isDraggingPin = false
+                                    if let pin = session.pin { framePoint(pin) }
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                         suppressNextMapTap = false
                                     }
@@ -136,6 +146,13 @@ struct MapHomeView: View {
                 }
                 .mapStyle(mapStyle)
                 .mapControlVisibility(.hidden)
+                .onMapCameraChange(frequency: .continuous) { _ in
+                    if position.positionedByUser {
+                        framing = nil
+                        awaitingCurrentLocation = false
+                        cameraIntentRevision &+= 1
+                    }
+                }
                 .onTapGesture { point in
                     searchFocused = false
                     guard !suppressNextMapTap, !isDraggingPin else { return }
@@ -146,6 +163,18 @@ struct MapHomeView: View {
             .background(LocusTheme.canvas.ignoresSafeArea())
 
             topChrome
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { mapSize = $0; refitCamera() }
+        .onChange(of: bottomOverlayHeight) { _, _ in refitCamera() }
+        .onChange(of: topOverlayHeight) { _, _ in refitCamera() }
+        .onChange(of: session.targetSelectionRevision) { _, revision in
+            guard !isDraggingPin, revision != routeTargetRevision else { return }
+            if let pin = session.pin { framePoint(pin) }
+            else { framing = nil; awaitingCurrentLocation = false; cameraIntentRevision &+= 1 }
+        }
+        .onChange(of: mapCoordinateSystem) { _, _ in refitCamera() }
+        .onChange(of: session.realCoordinate.map(RoutePoint.init)) { _, point in
+            if awaitingCurrentLocation, let point { awaitingCurrentLocation = false; framePoint(point.coordinate, meters: 900) }
         }
         .task(id: routeGeometryKey) {
             let key = routeGeometryKey
@@ -163,6 +192,7 @@ struct MapHomeView: View {
                 guard !Task.isCancelled, key == routeGeometryKey else { return }
                 routeGeometry = prepared
                 geometryRevision = key
+                refitCamera()
             } catch is CancellationError {} catch {
                 guard !Task.isCancelled, key == routeGeometryKey else { return }
                 session.lastError = error.localizedDescription
@@ -170,6 +200,9 @@ struct MapHomeView: View {
         }
         .onAppear {
             session.startLocationUpdates()
+            if let pin = session.pin { framePoint(pin) }
+            else if let real = session.realCoordinate { framePoint(real, meters: 900) }
+            else { awaitingCurrentLocation = true }
             importPendingGPX()
         }
         .onChange(of: session.pin?.latitude) { _, newValue in
@@ -222,15 +255,15 @@ struct MapHomeView: View {
             drawnPath.append(normalized)
         } else {
             session.selectTarget(normalized, source: .mapSelection)
-            pinPlaceName = nil
             pinSelected = false
         }
     }
 
     private var topChrome: some View {
+        ScrollView {
         LocusGlassContainer(spacing: 12) {
         VStack(spacing: 10) {
-            StatusBarView()
+            StatusBarView(onHelp: onHelp)
 
             MapSearchBar(searchText: $searchText, searchFocused: $searchFocused) { search.query = $0 }
 
@@ -256,10 +289,16 @@ struct MapHomeView: View {
             }
         }
         }
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { topContentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: min(topContentHeight, max(0, mapSize.height * 0.38 - 10)))
         .frame(maxWidth: 640)
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
         .safeAreaPadding(.top, 8)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { topOverlayHeight = $0 }
     }
 
     /// Centers on the spoofed fix while spoofing, otherwise the real GPS —
@@ -267,31 +306,43 @@ struct MapHomeView: View {
     private func goToCurrentLocation() {
         beginTargetChange()
         session.requestLatestLocation()
-        let meters: CLLocationDistance = 900
-        withAnimation(.easeInOut(duration: 0.35)) {
-            if session.isSpoofing, let sim = session.simulated {
-                position = .region(MKCoordinateRegion(
-                    center: displayed(sim),
-                    latitudinalMeters: meters,
-                    longitudinalMeters: meters
-                ))
-            } else if let real = session.realCoordinate {
-                position = .region(MKCoordinateRegion(
-                    center: displayed(real),
-                    latitudinalMeters: meters,
-                    longitudinalMeters: meters
-                ))
-            } else {
-                position = .userLocation(
-                    followsHeading: false,
-                    fallback: .region(MKCoordinateRegion(
-                        center: CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090),
-                        latitudinalMeters: 2000,
-                        longitudinalMeters: 2000
-                    ))
-                )
-            }
+        if session.isSpoofing, let sim = session.simulated { framePoint(sim, meters: 900) }
+        else if let real = session.realCoordinate { framePoint(real, meters: 900) }
+        else { awaitingCurrentLocation = true }
+    }
+
+    private func framePoint(_ coordinate: CLLocationCoordinate2D, meters: Double = 1_200) {
+        awaitingCurrentLocation = false
+        cameraIntentRevision &+= 1
+        pendingFramingRevision = cameraIntentRevision
+        framing = .point(RoutePoint(coordinate), meters)
+        refitCamera(explicit: true)
+    }
+
+    private func frameRoute() {
+        awaitingCurrentLocation = false
+        cameraIntentRevision &+= 1
+        pendingFramingRevision = cameraIntentRevision
+        framing = .route
+        refitCamera(explicit: true)
+    }
+
+    private func refitCamera(explicit: Bool = false) {
+        guard explicit || pendingFramingRevision == cameraIntentRevision || !position.positionedByUser else { return }
+        let content: MapViewportBounds?
+        switch framing {
+        case let .some(.point(point, meters)): content = MapViewportGeometry.point(displayed(point.coordinate), meters: meters)
+        case .some(.route): content = geometryRevision == routeGeometryKey ? routeGeometry?.framingBounds : nil
+        case .none: content = nil
         }
+        guard let content,
+              let rectangle = MapViewportGeometry.fit(content, width: Double(mapSize.width), height: Double(mapSize.height),
+                  top: Double(topOverlayHeight), bottom: Double(bottomOverlayHeight)) else { return }
+        let world = MKMapRect.world.size.width
+        let rect = MKMapRect(x: rectangle.x * world, y: rectangle.y * world,
+                             width: rectangle.width * world, height: rectangle.height * world)
+        pendingFramingRevision = nil
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.28)) { position = .rect(rect) }
     }
 
     private func toggleDrawing() {
@@ -301,12 +352,12 @@ struct MapHomeView: View {
 
     private func saveFavorite() {
         guard let pin = session.pin else { return }
-        let named = namedPinCoordinate.map { $0.latitude == pin.latitude && $0.longitude == pin.longitude } == true
-        session.addFavorite(name: session.suggestedFavoriteName(for: pin, fallback: named ? pinPlaceName : nil), coordinate: pin)
+        session.addFavorite(name: session.suggestedFavoriteName(for: pin, fallback: session.pinName), coordinate: pin)
     }
 
     private func select(completion: MKLocalSearchCompletion) {
         let revision = beginTargetChange()
+        let cameraRevision = cameraIntentRevision
         let serviceSystem = CoordinateSystem(rawValue: UserDefaults.standard.string(forKey: CoordinateSettings.serviceKey) ?? "wgs84") ?? .wgs84
         searchRequest = Task {
             let operation = PlaceSearchRequest(completion: completion)
@@ -316,10 +367,9 @@ struct MapHomeView: View {
                       let item = response.mapItems.first else { return }
                 let coordinate = try CoordinateTransform.normalize(item.placemark.coordinate, from: serviceSystem)
                 let title = item.name ?? completion.title
-                session.selectTarget(coordinate, source: .appleSearch, replacing: revision)
-                pinPlaceName = title
-                namedPinCoordinate = coordinate
-                position = .region(MKCoordinateRegion(center: displayed(coordinate), latitudinalMeters: 1200, longitudinalMeters: 1200))
+                session.selectTarget(coordinate, source: .appleSearch, name: title,
+                                     address: item.placemark.title, replacing: revision)
+                if cameraRevision != cameraIntentRevision { routeTargetRevision = session.targetSelectionRevision }
                 searchText = ""
                 search.query = ""
                 searchFocused = false
@@ -340,13 +390,14 @@ struct MapHomeView: View {
         cancelDraftPreparation()
         let revision = draftRevision
         let targetRevision = beginTargetChange()
+        let cameraRevision = cameraIntentRevision
         isRouting = true
         routeRequest = Task {
             do {
                 let coordinates = try await RouteBuilder.roadRoute(from: start, to: end, mode: session.travelMode)
                 guard !Task.isCancelled, revision == draftRevision else { return }
                 installTracks([RouteTrack(name: L10n.tr("Road route"), kind: .route,
-                    segments: [RouteSegment(points: coordinates.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .appleRoute, targetRevision: targetRevision)
+                    segments: [RouteSegment(points: coordinates.map { RoutePoint(latitude: $0.latitude, longitude: $0.longitude) })])], source: .appleRoute, targetRevision: targetRevision, cameraRevision: cameraRevision)
                 isRouting = false
             } catch {
                 guard !Task.isCancelled, revision == draftRevision else { return }
@@ -369,6 +420,7 @@ struct MapHomeView: View {
         if session.currentRoute?.id == playback.id {
             beginTargetChange()
             routeSelection.show(.current)
+            frameRoute()
         }
     }
 
@@ -385,15 +437,17 @@ struct MapHomeView: View {
         drawMode = false
     }
 
-    private func installTracks(_ tracks: [RouteTrack], source: CoordinateSource, targetRevision: UInt64) {
+    private func installTracks(_ tracks: [RouteTrack], source: CoordinateSource, targetRevision: UInt64,
+                               cameraRevision: UInt64? = nil) {
         importedTracks = tracks
         draftSource = source
         session.draftTrack = RouteDocument(tracks: tracks).preferredTrack
         selectedSegmentIndex = 0
-        // A search or map selection made after import/build began owns the pin.
-        routeSelection.show(.draft)
+        // A later selection owns both the target and the displayed route. Keep
+        // this result as a draft without stealing the current route preview.
         guard session.acceptsTargetChange(targetRevision) else { return }
-        setDraftTarget()
+        routeSelection.show(.draft)
+        setDraftTarget(allowFraming: cameraRevision == nil || cameraRevision == cameraIntentRevision)
     }
 
     private func selectTrack(_ id: UUID) {
@@ -405,16 +459,15 @@ struct MapHomeView: View {
         setDraftTarget()
     }
 
-    private func setDraftTarget() {
+    private func setDraftTarget(allowFraming: Bool = true) {
         searchRequest?.cancel()
         searchRequest = nil
-        pinPlaceName = nil
-        namedPinCoordinate = nil
         guard let track = session.draftTrack else { return }
         if let first = (track.segments.first(where: { $0.canPlay })
             ?? track.segments.first(where: { !$0.points.isEmpty }))?.points.first?.coordinate {
-            session.selectTarget(first, source: draftSource)
-            position = .region(MKCoordinateRegion(center: displayed(first), latitudinalMeters: 2000, longitudinalMeters: 2000))
+            session.selectTarget(first, source: draftSource, name: track.name)
+            routeTargetRevision = session.targetSelectionRevision
+            if allowFraming { frameRoute() }
         }
     }
 
@@ -422,6 +475,7 @@ struct MapHomeView: View {
         cancelDraftPreparation()
         let revision = draftRevision
         let targetRevision = beginTargetChange()
+        let cameraRevision = cameraIntentRevision
         isRouting = true
         importRequest = Task {
             do {
@@ -443,7 +497,7 @@ struct MapHomeView: View {
                     return tracks
                 }
                 guard !Task.isCancelled, revision == draftRevision else { return }
-                installTracks(document, source: .gpx, targetRevision: targetRevision)
+                installTracks(document, source: .gpx, targetRevision: targetRevision, cameraRevision: cameraRevision)
                 isRouting = false
                 showRouteSheet = true
             } catch {
@@ -471,13 +525,14 @@ struct MapHomeView: View {
         do { normalized = try CoordinateSettings.mapInput(coordinate) }
         catch { session.lastError = error.localizedDescription; return }
         session.selectTarget(normalized, source: .mapSelection)
-        pinPlaceName = nil
     }
 
     @discardableResult
     private func beginTargetChange() -> UInt64 {
         searchRequest?.cancel()
         searchRequest = nil
+        awaitingCurrentLocation = false
+        cameraIntentRevision &+= 1
         return session.beginTargetChange()
     }
 
@@ -495,8 +550,7 @@ struct MapHomeView: View {
         beginTargetChange()
         routeSelection.show(source)
         searchFocused = false
-        guard let first = displayedRoute?.segments.first(where: { !$0.points.isEmpty })?.points.first else { return }
-        position = .region(MKCoordinateRegion(center: displayed(first.coordinate), latitudinalMeters: 2000, longitudinalMeters: 2000))
+        frameRoute()
     }
 
     private func exportGPX() {

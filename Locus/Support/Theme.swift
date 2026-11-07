@@ -3,6 +3,7 @@ import SwiftUI
 enum LocusTheme {
     static let canvas = Color(red: 0.953, green: 0.969, blue: 0.980)
     static let ink = Color(red: 0.082, green: 0.176, blue: 0.231)
+    static let secondaryInk = ink.opacity(0.7)
     static let accent = Color(red: 0.031, green: 0.498, blue: 0.522)
     static let accentSecondary = Color(red: 0.639, green: 0.357, blue: 0.106)
     static let danger = Color(red: 0.769, green: 0.243, blue: 0.318)

@@ -37,6 +37,11 @@ def main():
     for source in (ROOT / "Locus").rglob("*.swift"):
         for match in CALL.finditer(source.read_text(encoding="utf-8")):
             used.add(json.loads(match.group(1)))
+    # Guide content is selected by structured state and rendered through dynamic
+    # keys. Include its declared text fields, which literal call scanning misses.
+    guide = (ROOT / "Locus/Engine/ConnectionGuidePolicy.swift").read_text(encoding="utf-8")
+    for match in re.finditer(r'(?:titleKey|detailKey|title|summary):\s*("(?:[^"\\]|\\.)*")', guide):
+        used.add(json.loads(match.group(1)))
     assert used <= chinese.keys(), f"Missing keys: {used - chinese.keys()}"
     for language in ["en", "zh-Hans"]:
         info = strings(resources / f"{language}.lproj/InfoPlist.strings")

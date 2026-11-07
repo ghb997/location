@@ -25,12 +25,16 @@ targets:
       - path: ../Locus/Features/Map/MapToolbar.swift
       - path: ../Locus/Features/Map/BottomControlsView.swift
       - path: ../Locus/Features/Map/MapBottomChrome.swift
+      - path: ../Locus/Features/Map/MapActionControls.swift
+      - path: ../Locus/Features/Map/TargetPlaceCard.swift
+      - path: ../Locus/Features/Map/ConnectionGuideSheet.swift
       - path: ../Locus/Features/Map/MapDropPin.swift
       - path: ../Locus/Features/Joystick/JoystickPad.swift
       - path: ../Locus/Features/Routes/RoutePlaybackControls.swift
       - path: ../Locus/Engine/RouteDocument.swift
       - path: ../Locus/Engine/RouteGeometry.swift
       - path: ../Locus/Engine/RoutePlaybackCore.swift
+      - path: ../Locus/Engine/ConnectionGuidePolicy.swift
       - path: ../Locus/Resources/en.lproj/Localizable.strings
         buildPhase: resources
       - path: ../Locus/Resources/zh-Hans.lproj/Localizable.strings

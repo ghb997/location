@@ -5,6 +5,15 @@ enum PreviewScenario: String {
     case activeRoute = "active-route"
     case largeType = "large-type"
     case reducedTransparency = "reduced-transparency"
+    case guidePairing = "guide-pairing"
+    case guideRestoration = "guide-restoration"
+    case compactHeight = "compact-height"
+
+    var showsActiveRoute: Bool {
+        [PreviewScenario.activeRoute, .largeType, .reducedTransparency, .compactHeight].contains(self)
+    }
+
+    var isGuide: Bool { self == .guidePairing || self == .guideRestoration }
 
     static var requested: PreviewScenario {
         let arguments = ProcessInfo.processInfo.arguments
@@ -24,7 +33,8 @@ struct LocationDesignPreviewApp: App {
             ComponentPreview(scenario: scenario)
                 .environmentObject(session)
                 .environmentObject(pairing)
-                .environment(\.dynamicTypeSize, scenario == .largeType ? .accessibility2 : .large)
+                .environment(\.dynamicTypeSize,
+                             scenario == .largeType || scenario == .compactHeight ? .accessibility2 : .large)
                 .preferredColorScheme(.light)
                 .tint(LocusTheme.accent)
         }
@@ -42,12 +52,46 @@ private struct ComponentPreview: View {
     @FocusState private var searchFocused: Bool
     @State private var showSettings = false
     @State private var showPlaces = false
+    @State private var topContentHeight: CGFloat = 0
+    @State private var topChromeHeight: CGFloat = 0
+    @State private var bottomChromeHeight: CGFloat = 0
 
     var body: some View {
+        Group {
+            if scenario.isGuide {
+                VStack(spacing: 0) {
+                    fixtureLabel("UI 组件预览 · 操作无副作用")
+                    ConnectionGuideSheet(guide: guide,
+                        onOpenSettings: { _ in }, onCheckConnection: {}, onRestoreLocation: {})
+                }
+            } else if scenario == .compactHeight {
+                VStack(spacing: 20) {
+                    fixtureLabel("受限高度组件 · 合成地图 · 320 pt\n非横屏实测")
+                    mapComposition.frame(height: 320).clipped()
+                        .overlay(Rectangle().stroke(LocusTheme.accent.opacity(0.25), lineWidth: 1))
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                mapComposition
+            }
+        }
+        .background(LocusTheme.canvas.ignoresSafeArea())
+        .foregroundStyle(LocusTheme.ink)
+        .onAppear { recordObservedEnvironment() }
+        .onChange(of: reduceTransparency) { _, _ in recordObservedEnvironment() }
+        .onChange(of: reduceMotion) { _, _ in recordObservedEnvironment() }
+        .onChange(of: colorScheme) { _, _ in recordObservedEnvironment() }
+        .onChange(of: topChromeHeight) { _, _ in recordObservedEnvironment() }
+        .onChange(of: bottomChromeHeight) { _, _ in recordObservedEnvironment() }
+    }
+
+    private var mapComposition: some View {
         GeometryReader { geometry in
         ZStack(alignment: .bottom) {
             ZStack(alignment: .top) {
-                SyntheticMap(hasRoute: scenario != .idle)
+                SyntheticMap(hasRoute: scenario.showsActiveRoute,
+                    topInset: topChromeHeight, bottomInset: bottomChromeHeight)
+                ScrollView {
                 LocusGlassContainer(spacing: 12) {
                     VStack(spacing: 10) {
                         StatusBarView()
@@ -59,24 +103,43 @@ private struct ComponentPreview: View {
                         )
                     }
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { topContentHeight = $0 }
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: min(topContentHeight > 0 ? topContentHeight : topHeightLimit(geometry.size.height),
+                                   topHeightLimit(geometry.size.height)))
                 .frame(maxWidth: 640)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 2)
                 .safeAreaPadding(.top, 8)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { topChromeHeight = $0 }
             }
             MapBottomChrome(availableHeight: geometry.size.height,
                 showSettings: $showSettings, showPlaces: $showPlaces)
                 .frame(maxWidth: 540)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomChromeHeight = $0 }
         }
         }
-        .background(LocusTheme.canvas.ignoresSafeArea())
-        .foregroundStyle(LocusTheme.ink)
-        .onAppear { recordObservedEnvironment() }
-        .onChange(of: reduceTransparency) { _, _ in recordObservedEnvironment() }
-        .onChange(of: reduceMotion) { _, _ in recordObservedEnvironment() }
-        .onChange(of: colorScheme) { _, _ in recordObservedEnvironment() }
+    }
+
+    private func topHeightLimit(_ height: CGFloat) -> CGFloat { max(0, height * 0.38 - 10) }
+
+    private func fixtureLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(LocusTheme.secondaryInk)
+            .multilineTextAlignment(.center)
+            .padding(10)
+            .frame(maxWidth: .infinity)
+    }
+
+    private var guide: ConnectionGuidePolicy.Guide {
+        var state = ConnectionGuidePolicy.Snapshot(hasPairingFile: scenario != .guidePairing)
+        state.restorationRequired = scenario == .guideRestoration
+        state.canRetryRestore = true
+        return ConnectionGuidePolicy.resolve(state)
     }
 
     private func recordObservedEnvironment() {
@@ -87,7 +150,16 @@ private struct ComponentPreview: View {
             "colorScheme": colorScheme == .light ? "light" : "dark",
             "dynamicTypeSize": String(describing: dynamicTypeSize),
             "isAccessibilitySize": dynamicTypeSize.isAccessibilitySize,
-            "language": Bundle.main.preferredLocalizations.first ?? "unknown"
+            "language": Bundle.main.preferredLocalizations.first ?? "unknown",
+            "renderReady": scenario.isGuide || (topChromeHeight > 0 && bottomChromeHeight > 0),
+            "guideTopic": scenario.isGuide ? guide.topic.rawValue : "none",
+            "guideActionsInert": scenario.isGuide,
+            "topChromeHeight": topChromeHeight,
+            "bottomChromeHeight": bottomChromeHeight,
+            "constrainedContainerHeight": scenario == .compactHeight ? 320 : 0,
+            "simulatedAndPendingAreSeparate": session.simulated.map { simulated in
+                session.pin.map { simulated.latitude != $0.latitude || simulated.longitude != $0.longitude } ?? false
+            } ?? false
         ]
         do {
             let directory = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask,
@@ -104,6 +176,8 @@ private struct ComponentPreview: View {
 /// without requiring MapKit network tiles or representing a real location fix.
 private struct SyntheticMap: View {
     let hasRoute: Bool
+    let topInset: CGFloat
+    let bottomInset: CGFloat
 
     var body: some View {
         GeometryReader { geometry in
@@ -157,14 +231,27 @@ private struct SyntheticMap: View {
 
             MapDropPin(selected: false, isDragging: false, onSelect: {}, onRemove: {},
                        onDragBegan: {}, onDragMoved: { _ in }, onDragEnded: {})
-                .position(x: geometry.size.width * 0.53, y: geometry.size.height * 0.49)
+                .position(x: geometry.size.width * 0.53,
+                          y: (geometry.size.height + topInset - bottomInset) / 2)
 
+            if hasRoute {
+                Circle().fill(LocusTheme.accent)
+                    .frame(width: 14, height: 14)
+                    .overlay(Circle().stroke(.white, lineWidth: 2))
+                    .position(x: geometry.size.width * 0.27,
+                              y: (geometry.size.height + topInset - bottomInset) / 2)
+            }
+
+            if geometry.size.height >= 400 {
             Text("UI 组件预览 · 合成地图")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(LocusTheme.ink.opacity(0.70))
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(.white.opacity(0.85), in: Capsule())
-                .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.56)
+                .position(x: geometry.size.width * 0.5,
+                          y: min(geometry.size.height - bottomInset - 14,
+                                 (geometry.size.height + topInset - bottomInset) / 2 + 38))
+            }
         }
     }
 }

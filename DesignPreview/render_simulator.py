@@ -12,7 +12,8 @@ import time
 from pathlib import Path
 
 BUNDLE_ID = "com.ghb997.location.designpreview"
-SCENARIOS = ("idle", "active-route", "large-type", "reduced-transparency")
+SCENARIOS = ("idle", "active-route", "large-type", "reduced-transparency",
+             "guide-pairing", "guide-restoration", "compact-height")
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -56,7 +57,7 @@ def wait_for_environment(path: Path, timeout: float = 90) -> dict:
     while True:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(value, dict):
+            if isinstance(value, dict) and value.get("renderReady") is True:
                 return value
         except (FileNotFoundError, json.JSONDecodeError):
             pass
@@ -110,13 +111,13 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
     runtime, targets = available_targets()
     manifest = {
-        "scope": "Production SwiftUI component rendering on a synthetic map with fake session state. Not the full app, real map tiles, native connection, real-device positioning, or hardware validation.",
+        "scope": "Production SwiftUI component rendering on a synthetic map with fake session state; guide callbacks are inert. The compact-height scenario is a labeled 320-point component container, not landscape or keyboard interaction testing. Not the full app, real map tiles, MapKit camera validation, native connection, real-device positioning, or hardware validation.",
         "commit": run("git", "rev-parse", "HEAD").strip(),
         "runtime": runtime,
         "device_appearance": "dark",
         "app_appearance": "light (Info.plist and preferredColorScheme)",
         "language": "zh-Hans",
-        "accessibility": "Fixture injects accessibility2 for large-type. Simulator Accessibility preferences set reduceTransparency for reduced-transparency and reduceMotion for all scenarios; actual SwiftUI environment values are checked before screenshots.",
+        "accessibility": "Fixture injects accessibility2 for large-type and compact-height. Simulator Accessibility preferences set reduceTransparency for reduced-transparency and reduceMotion for all scenarios; actual SwiftUI environment values are checked before screenshots.",
         "screenshots": [],
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -146,7 +147,11 @@ def main() -> None:
                 run("xcrun", "simctl", "spawn", udid, "defaults", "write", "com.apple.Accessibility", "EnhancedBackgroundContrastEnabled", "-int", str(int(reduced)))
                 run("xcrun", "simctl", "launch", "--terminate-running-process", udid, BUNDLE_ID,
                     "--scenario", scenario, "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN")
-                observed = wait_for_environment(environment_path)
+                wait_for_environment(environment_path)
+                time.sleep(3)
+                # Geometry and system appearance may settle after onAppear.
+                # Record the final observed values, not the first readiness file.
+                observed = json.loads(environment_path.read_text(encoding="utf-8"))
                 (output / f"{family}-{scenario}-environment.json").write_text(json.dumps(observed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 if observed.get("scenario") != scenario or observed.get("colorScheme") != "light":
                     raise RuntimeError(f"Wrong app scenario/appearance: {observed}")
@@ -154,9 +159,23 @@ def main() -> None:
                     raise RuntimeError(f"Simulator accessibility preferences did not reach the app: {observed}")
                 if observed.get("language") != "zh-Hans":
                     raise RuntimeError(f"Chinese localization was not selected: {observed}")
-                if observed.get("isAccessibilitySize") != (scenario == "large-type"):
+                if observed.get("isAccessibilitySize") != (scenario in ("large-type", "compact-height")):
                     raise RuntimeError(f"Wrong Dynamic Type size: {observed}")
-                time.sleep(3)
+                expected_guide = {"guide-pairing": "pairing", "guide-restoration": "restoration"}.get(scenario, "none")
+                if observed.get("guideTopic") != expected_guide:
+                    raise RuntimeError(f"Wrong guide scenario: {observed}")
+                if expected_guide != "none" and observed.get("guideActionsInert") is not True:
+                    raise RuntimeError(f"Guide callbacks must be inert in the fixture: {observed}")
+                if observed.get("renderReady") is not True:
+                    raise RuntimeError(f"Component layout is not ready: {observed}")
+                if scenario in ("active-route", "large-type", "reduced-transparency", "compact-height"):
+                    if observed.get("simulatedAndPendingAreSeparate") is not True:
+                        raise RuntimeError(f"Active position and pending target must differ: {observed}")
+                if scenario == "compact-height":
+                    if observed.get("constrainedContainerHeight") != 320:
+                        raise RuntimeError(f"Wrong constrained container height: {observed}")
+                    if observed.get("topChromeHeight", 0) + observed.get("bottomChromeHeight", 0) >= 320:
+                        raise RuntimeError(f"Chrome covers the complete constrained map: {observed}")
                 filename = f"{family}-{scenario}.png"
                 screenshot = output / filename
                 run("xcrun", "simctl", "io", udid, "screenshot", str(screenshot))
@@ -177,6 +196,7 @@ def main() -> None:
             raise
         finally:
             run("xcrun", "simctl", "shutdown", udid, check=False)
+    assert len(manifest["screenshots"]) == len(SCENARIOS) * len(targets)
     print(f"Rendered {len(manifest['screenshots'])} simulator screenshots.", flush=True)
 
 

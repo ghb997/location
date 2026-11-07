@@ -80,7 +80,11 @@ final class SpoofSession: ObservableObject {
     @Published var status: SpoofStatus = .idle
     @Published private(set) var pin: CLLocationCoordinate2D?
     @Published private(set) var pinSource: CoordinateSource = .manual
+    @Published private(set) var pinName: String?
+    @Published private(set) var pinAddress: String?
     @Published private(set) var targetRevision: UInt64 = 0
+    /// Advances only after an accepted selection, never when a provider is cancelled.
+    @Published private(set) var targetSelectionRevision: UInt64 = 0
     @Published var simulated: CLLocationCoordinate2D?
     @Published var travelMode: TravelMode = .walk
     @Published var mapStyleIndex: Int = 0
@@ -328,13 +332,35 @@ final class SpoofSession: ObservableObject {
 
     @discardableResult
     func selectTarget(_ coordinate: CLLocationCoordinate2D?, source: CoordinateSource = .manual,
+                      name: String? = nil, address: String? = nil,
                       replacing revision: UInt64? = nil) -> Bool {
         if let revision, !acceptsTargetChange(revision) { return false }
         if let coordinate, !RouteGeometry.isValid(coordinate) { return false }
         beginTargetChange()
         pin = coordinate
         pinSource = source
+        pinName = coordinate == nil ? nil : Self.targetText(name)
+        pinAddress = coordinate == nil ? nil : Self.targetText(address)
+        targetSelectionRevision &+= 1
         return true
+    }
+
+    private static func targetText(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        return value
+    }
+
+    private func isSelectedTarget(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        pin.map { $0.latitude == coordinate.latitude && $0.longitude == coordinate.longitude } == true
+    }
+
+    var isFavoriteTarget: Bool {
+        guard let pin else { return false }
+        return favorites.contains { $0.latitude == pin.latitude && $0.longitude == pin.longitude }
+    }
+
+    var canSaveTargetFavorite: Bool {
+        pin != nil && !favoritesNeedRecovery && !isFavoriteTarget
     }
 
     func teleport(to coordinate: CLLocationCoordinate2D, pairing: any PairingProviding) {
@@ -347,7 +373,10 @@ final class SpoofSession: ObservableObject {
         let previousCore = routeCore
         cancelMovement(resetRoute: false)
         let token = generation
-        selectTarget(coordinate, source: pinSource)
+        let usesSelectedTarget = isSelectedTarget(coordinate)
+        selectTarget(coordinate, source: usesSelectedTarget ? pinSource : .manual,
+                     name: usesSelectedTarget ? pinName : nil,
+                     address: usesSelectedTarget ? pinAddress : nil)
         Task {
             let succeeded = await apply(coordinate, pairing: pairing, markRecent: true, token: token)
             guard operationEpoch.accepts(token) else { return }
@@ -721,6 +750,7 @@ final class SpoofSession: ObservableObject {
         if let fallback, !fallback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return fallback.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        if isSelectedTarget(coordinate), let pinName { return pinName }
         if let favorite = favorites.first(where: { $0.coordinateKey == SavedPlace(name: "", latitude: coordinate.latitude, longitude: coordinate.longitude).coordinateKey }),
            !Self.isGenericFavoriteName(favorite.name) {
             return favorite.name
@@ -916,7 +946,9 @@ final class SpoofSession: ObservableObject {
     }
 
     private func pushRecent(_ coordinate: CLLocationCoordinate2D) {
-        pushNamedRecent(name: Self.coordinateLabel(coordinate), coordinate: coordinate)
+        let selectedName = isSelectedTarget(coordinate) ? pinName : nil
+        let previousName = recents.first { $0.latitude == coordinate.latitude && $0.longitude == coordinate.longitude }?.name
+        pushNamedRecent(name: selectedName ?? previousName ?? Self.coordinateLabel(coordinate), coordinate: coordinate)
     }
 
     func pushNamedRecent(name: String, coordinate: CLLocationCoordinate2D) {

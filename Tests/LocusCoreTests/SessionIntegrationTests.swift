@@ -10,6 +10,117 @@ import XCTest
 final class SessionIntegrationTests: XCTestCase {
     private let origin = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
 
+    func testTargetMetadataRejectsStaleAndInvalidSelectionsTogether() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        let searchRevision = rig.session.beginTargetChange()
+        XCTAssertEqual(rig.session.targetSelectionRevision, 0)
+        XCTAssertTrue(rig.session.selectTarget(origin, source: .appleSearch,
+            name: "  Museum  ", address: "  Example Road  ", replacing: searchRevision))
+        let selectedRevision = rig.session.targetSelectionRevision
+        XCTAssertEqual(rig.session.pinName, "Museum")
+        XCTAssertEqual(rig.session.pinAddress, "Example Road")
+
+        XCTAssertFalse(rig.session.selectTarget(.init(latitude: 32, longitude: 120), source: .appleSearch,
+            name: "Late result", address: "Old address", replacing: searchRevision))
+        XCTAssertFalse(rig.session.selectTarget(.init(latitude: .nan, longitude: 120),
+            name: "Invalid result", address: "Invalid address"))
+        XCTAssertEqual(rig.session.pin.map(RoutePoint.init), RoutePoint(origin))
+        XCTAssertEqual(rig.session.pinName, "Museum")
+        XCTAssertEqual(rig.session.pinAddress, "Example Road")
+        XCTAssertEqual(rig.session.targetSelectionRevision, selectedRevision)
+
+        _ = rig.session.beginTargetChange()
+        XCTAssertEqual(rig.session.targetSelectionRevision, selectedRevision)
+        XCTAssertTrue(rig.session.selectTarget(origin, source: .mapSelection))
+        XCTAssertNil(rig.session.pinName)
+        XCTAssertNil(rig.session.pinAddress)
+        XCTAssertEqual(rig.session.targetSelectionRevision, selectedRevision + 1)
+        rig.session.selectTarget(origin, name: "New name", address: "New address")
+        rig.session.selectTarget(nil, name: "Must not survive", address: "Must not survive")
+        XCTAssertNil(rig.session.pin)
+        XCTAssertNil(rig.session.pinName)
+        XCTAssertNil(rig.session.pinAddress)
+    }
+
+    func testTargetSelectionCanPreviewWhileNativeWritesAreBlocked() async {
+        let rig = SessionRig()
+        defer { rig.transport.isDraining = false; rig.dispose() }
+        rig.transport.isDraining = true
+        XCTAssertFalse(rig.session.canWrite)
+        XCTAssertTrue(rig.session.selectTarget(origin, source: .legacy, name: "Saved place"))
+        XCTAssertEqual(rig.session.pinName, "Saved place")
+        XCTAssertEqual(rig.session.pinSource, .legacy)
+        XCTAssertTrue(rig.transport.writes.isEmpty)
+        XCTAssertNil(rig.session.simulated)
+    }
+
+    func testTeleportRetainsOnlyMatchingTargetMetadataAndRecentName() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        rig.session.selectTarget(origin, source: .appleSearch, name: "Museum", address: "Example Road")
+        rig.session.teleport(to: origin, pairing: rig.pairing)
+        await waitFor { rig.session.status == .active && !rig.session.isBusy }
+        XCTAssertEqual(rig.session.pinName, "Museum")
+        XCTAssertEqual(rig.session.pinAddress, "Example Road")
+        XCTAssertEqual(rig.session.pinSource, .appleSearch)
+        XCTAssertEqual(rig.session.recents.first?.name, "Museum")
+
+        let other = CLLocationCoordinate2D(latitude: 30, longitude: 120)
+        rig.session.teleport(to: other, pairing: rig.pairing)
+        await waitFor { rig.session.simulated.map(RoutePoint.init) == RoutePoint(other) && !rig.session.isBusy }
+        XCTAssertNil(rig.session.pinName)
+        XCTAssertNil(rig.session.pinAddress)
+        XCTAssertEqual(rig.session.pinSource, .manual)
+        XCTAssertNotEqual(rig.session.recents.first?.name, "Museum")
+    }
+
+    func testReconnectionAndRouteWritesDoNotReplacePendingTargetDetails() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        rig.session.selectTarget(origin, name: "Current position")
+        rig.session.teleport(to: origin, pairing: rig.pairing)
+        await waitFor { rig.session.status == .active && !rig.session.isBusy }
+        let pending = CLLocationCoordinate2D(latitude: 30, longitude: 120)
+        rig.session.selectTarget(pending, source: .appleSearch, name: "Pending hotel", address: "Target Road")
+        let selectedRevision = rig.session.targetSelectionRevision
+        rig.session.reconnect(pairing: rig.pairing)
+        await waitFor { rig.transport.writes.count == 2 && !rig.session.isBusy }
+        XCTAssertEqual(rig.session.pin.map(RoutePoint.init), RoutePoint(pending))
+        XCTAssertEqual(rig.session.pinName, "Pending hotel")
+        XCTAssertEqual(rig.session.targetSelectionRevision, selectedRevision)
+
+        let routeStart = CLLocationCoordinate2D(latitude: 32, longitude: 121)
+        rig.session.followRoute([routeStart, .init(latitude: 32.01, longitude: 121.01)], pairing: rig.pairing)
+        await waitFor { rig.session.routeState == .playing && !rig.session.isBusy }
+        XCTAssertEqual(rig.session.simulated.map(RoutePoint.init), RoutePoint(routeStart))
+        XCTAssertEqual(rig.session.pin.map(RoutePoint.init), RoutePoint(pending))
+        XCTAssertEqual(rig.session.pinName, "Pending hotel")
+        XCTAssertEqual(rig.session.pinAddress, "Target Road")
+        XCTAssertEqual(rig.session.targetSelectionRevision, selectedRevision)
+        XCTAssertNotEqual(rig.session.recents.first?.name, "Pending hotel")
+    }
+
+    func testFavoriteTargetStateTracksSavedPlaceChanges() async throws {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        rig.session.selectTarget(origin, source: .appleSearch, name: "Museum")
+        XCTAssertFalse(rig.session.isFavoriteTarget)
+        XCTAssertTrue(rig.session.canSaveTargetFavorite)
+        XCTAssertEqual(rig.session.suggestedFavoriteName(for: origin), "Museum")
+        rig.session.addFavorite(name: rig.session.suggestedFavoriteName(for: origin), coordinate: origin)
+        XCTAssertTrue(rig.session.isFavoriteTarget)
+        XCTAssertFalse(rig.session.canSaveTargetFavorite)
+        let favorite = try XCTUnwrap(rig.session.favorites.first)
+        rig.session.renameFavorite(favorite, to: "Renamed museum")
+        XCTAssertTrue(rig.session.isFavoriteTarget)
+        rig.session.removeFavorite(favorite)
+        XCTAssertFalse(rig.session.isFavoriteTarget)
+        XCTAssertTrue(rig.session.canSaveTargetFavorite)
+        rig.session.selectTarget(nil)
+        XCTAssertFalse(rig.session.canSaveTargetFavorite)
+    }
+
     func testNewManualAndFavoriteTargetRejectLateSearchAndImport() async {
         let rig = SessionRig()
         defer { rig.dispose() }
@@ -32,7 +143,9 @@ final class SessionIntegrationTests: XCTestCase {
         let damaged = Data("damaged".utf8)
         rig.defaults.set(damaged, forKey: "locus.favorites")
         rig.session.reloadPlaces()
+        rig.session.selectTarget(origin, name: "Preview remains available")
         XCTAssertTrue(rig.session.favoritesNeedRecovery)
+        XCTAssertFalse(rig.session.canSaveTargetFavorite)
         rig.session.addFavorite(name: "new", coordinate: origin)
         XCTAssertTrue(rig.session.favorites.isEmpty)
         XCTAssertEqual(rig.defaults.data(forKey: "locus.favorites"), damaged)

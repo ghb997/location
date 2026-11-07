@@ -3,7 +3,6 @@ import SwiftUI
 
 struct PlacesView: View {
     @EnvironmentObject private var session: SpoofSession
-    @EnvironmentObject private var pairing: PairingStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var recoveryExport: URL?
@@ -18,6 +17,11 @@ struct PlacesView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Text(L10n.tr("Choose a place to preview it on the map, then use Go to pin to apply it."))
+                        .font(.footnote)
+                        .foregroundStyle(LocusTheme.ink.opacity(0.7))
+                }
                 if session.favoritesNeedRecovery { recoverySection(recent: false) }
                 if session.recentsNeedRecovery { recoverySection(recent: true) }
                 if let recoveryExport {
@@ -159,9 +163,7 @@ struct PlacesView: View {
 
     private func placeButton(_ place: SavedPlace) -> some View {
         Button {
-            guard session.canWrite else { return }
-            session.selectTarget(place.coordinate, source: place.source)
-            session.teleport(to: place.coordinate, pairing: pairing)
+            guard session.selectTarget(place.coordinate, source: place.source, name: place.name) else { return }
             dismiss()
         } label: {
             VStack(alignment: .leading, spacing: 2) {
@@ -171,7 +173,7 @@ struct PlacesView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .disabled(!session.canWrite)
+        .accessibilityHint(L10n.tr("Select this place on the map."))
     }
 
     private func previewCorrection(_ place: SavedPlace, isRecent: Bool = false) {

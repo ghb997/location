@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
+    var initialSection: ConnectionGuidePolicy.SettingsSection? = nil
     @EnvironmentObject private var pairing: PairingStore
     @EnvironmentObject private var session: SpoofSession
     @EnvironmentObject private var host: PairOnDeviceService
@@ -39,6 +40,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { scroll in
             List {
                 if session.restorationRequired {
                     Section(L10n.tr("Repair restoration connection")) {
@@ -56,6 +58,7 @@ struct SettingsView: View {
                             }.disabled(!session.canRepairRecovery)
                         }
                     }
+                    .id(ConnectionGuidePolicy.SettingsSection.restoration)
                 }
                 Section {
                     Label {
@@ -100,6 +103,7 @@ struct SettingsView: View {
                          : L10n.tr("Import an RPPairing file from idevice_pair (not a SideStore lockdown .mobiledevicepairing). If the file picker fails (common in LiveContainer), enable Fix File Picker on the app, share the file into LiveContainer → Locus, or copy the plist and use Paste."))
                 }
                 .disabled(!canEditConnection)
+                .id(ConnectionGuidePolicy.SettingsSection.pairing)
 
                 Section {
                     TextField(L10n.tr("Device tunnel IP"), text: $tunnelIP)
@@ -137,6 +141,7 @@ struct SettingsView: View {
                     Text(L10n.tr("Use the device endpoint configured by your loopback VPN, usually 10.7.0.1. A detected VPN interface does not prove the developer service is reachable."))
                 }
                 .disabled(!canEditConnection)
+                .id(ConnectionGuidePolicy.SettingsSection.tunnel)
 
                 if session.canStop && !session.isRepairingRecovery {
                     Text(L10n.tr("Stop the current simulation before changing pairing or tunnel settings."))
@@ -168,6 +173,7 @@ struct SettingsView: View {
                     Text(L10n.tr("Connection checks do not change your position. Shared diagnostics exclude pairing secrets, PINs and exact coordinates."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                .id(ConnectionGuidePolicy.SettingsSection.diagnostics)
 
                 Section(L10n.tr("Coordinates")) {
                     Button(L10n.tr("Enter coordinates…")) { showCoordinates = true }
@@ -236,6 +242,15 @@ struct SettingsView: View {
                     .listRowSeparator(.hidden)
                 }
             }
+            .task(id: initialSection) {
+                guard let initialSection else { return }
+                // A guide can change state while its sheet is dismissing.
+                let section = initialSection == .restoration && !session.restorationRequired
+                    ? ConnectionGuidePolicy.SettingsSection.diagnostics : initialSection
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+                scroll.scrollTo(section, anchor: .top)
+            }
             .scrollContentBackground(.hidden)
             .background { LocusSheetBackground() }
             .navigationTitle(L10n.tr("Settings"))
@@ -297,6 +312,7 @@ struct SettingsView: View {
                 if phase == .active {
                     localDevVPNInstalled = LocalDevVPN.isInstalled
                 }
+            }
             }
         }
         .locusSheetBackdrop()

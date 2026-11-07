@@ -33,22 +33,35 @@ enum TravelMode: String, CaseIterable, Identifiable {
 }
 
 @MainActor
-final class PairingStore: ObservableObject {}
+final class PairingStore: ObservableObject {
+    @Published var hasPairingFile: Bool
+    init(scenario: PreviewScenario = .requested) {
+        hasPairingFile = scenario != .idle && scenario != .guidePairing
+    }
+}
 
 @MainActor
 final class TunnelDiagnostics: ObservableObject {
-    enum State { case idle, reachable, ready }
+    enum State { case unknown, checking, reachable, ready, failed, draining }
     static let shared = TunnelDiagnostics()
     @Published var isDraining = false
-    @Published var state: State = .idle
-    var statusLabel: String { L10n.tr("Not Spoofing") }
+    @Published var state: State = .unknown
+    var statusLabel: String { L10n.tr("Connection not checked") }
 }
 
 @MainActor
 final class SpoofSession: ObservableObject {
+    struct Favorite {
+        let name: String
+        let coordinate: CLLocationCoordinate2D
+    }
+
     @Published var status: SpoofStatus = .idle
     @Published var simulated: CLLocationCoordinate2D?
-    @Published var pin: CLLocationCoordinate2D? = .init(latitude: 31.23, longitude: 121.47)
+    @Published var pin: CLLocationCoordinate2D? = .init(latitude: 31.2304, longitude: 121.4737)
+    @Published var pinName: String? = "示例公园 · 东门"
+    @Published var pinAddress: String? = "示例大道 128 号 · 演示地址"
+    @Published var favorites: [Favorite] = []
     @Published var travelMode: TravelMode = .walk
     @Published var joystickActive = false
     @Published var currentRoute: RouteTrack?
@@ -58,13 +71,22 @@ final class SpoofSession: ObservableObject {
     var restorationRequired = false
     var isBusy = false
     var canWrite = true
-    var canStop: Bool { status == .active }
+    var canStop: Bool { status == .active || restorationRequired }
     var canRetryRestore = true
+    var canSaveTargetFavorite = true
+    var isFavoriteTarget: Bool {
+        guard let pin else { return false }
+        return favorites.contains { $0.coordinate.latitude == pin.latitude && $0.coordinate.longitude == pin.longitude }
+    }
 
     init(scenario: PreviewScenario) {
-        if scenario != .idle {
+        if scenario == .guideRestoration {
+            restorationRequired = true
+            canWrite = false
+        } else if scenario.showsActiveRoute {
             status = .active
-            simulated = pin
+            // The pending target deliberately differs from the active position.
+            simulated = .init(latitude: 31.2296, longitude: 121.4655)
             routeState = .playing
             currentRoute = RouteTrack(name: "预览路线", coordinates: [
                 .init(latitude: 31.23, longitude: 121.47),
@@ -81,4 +103,16 @@ final class SpoofSession: ObservableObject {
     func pauseRoute() { routeState = .paused }
     func resumeRoute(pairing: PairingStore) { routeState = .playing }
     func nextRouteSegment(pairing: PairingStore) {}
+
+    func suggestedFavoriteName(for coordinate: CLLocationCoordinate2D, fallback: String? = nil) -> String {
+        fallback ?? pinName ?? "预览地点"
+    }
+    func addFavorite(name: String, coordinate: CLLocationCoordinate2D) {
+        favorites.append(Favorite(name: name, coordinate: coordinate))
+    }
+    func selectTarget(_ coordinate: CLLocationCoordinate2D?) {
+        pin = coordinate
+        pinName = nil
+        pinAddress = nil
+    }
 }

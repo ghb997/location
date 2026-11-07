@@ -8,6 +8,7 @@ on:
       - 'DesignPreview/**'
       - 'Locus/Features/**'
       - 'Locus/Engine/Route*.swift'
+      - 'Locus/Engine/ConnectionGuidePolicy.swift'
       - 'Locus/Support/Theme.swift'
       - 'Locus/Support/IconButton.swift'
       - 'Locus/Support/L10n.swift'
@@ -24,7 +25,7 @@ concurrency:
 jobs:
   screenshots:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode 26

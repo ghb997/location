@@ -3,9 +3,7 @@ import SwiftUI
 struct BottomControlsView: View {
     @Namespace private var modeSelection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var session: SpoofSession
-    @EnvironmentObject private var pairing: PairingStore
     @Binding var showSettings: Bool
     @Binding var showPlaces: Bool
 
@@ -27,6 +25,22 @@ struct BottomControlsView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
+            if let pin = session.pin {
+                TargetPlaceCard(
+                    coordinate: pin,
+                    name: session.pinName,
+                    address: session.pinAddress,
+                    isFavorite: session.isFavoriteTarget,
+                    canSaveFavorite: session.canSaveTargetFavorite,
+                    onFavorite: {
+                        session.addFavorite(
+                            name: session.suggestedFavoriteName(for: pin, fallback: session.pinName),
+                            coordinate: pin)
+                    },
+                    onClear: { session.selectTarget(nil) }
+                )
+            }
+
             HStack(spacing: 10) {
                 modeSelector
                 IconButton(systemName: "gearshape.fill") { showSettings = true }
@@ -37,47 +51,14 @@ struct BottomControlsView: View {
 
             if session.currentRoute != nil {
                 RoutePlaybackControls()
-                    .padding(16)
+                    .padding(14)
                     .locusGlass(.regular, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
 
-            // Each action has its own glass surface, so the map can refract through
-            // the spaces between controls instead of a second glass backing tray.
-            actionLayout {
-                joystickButton
-                Button {
-                    if let pin = session.pin { session.teleport(to: pin, pairing: pairing) }
-                } label: {
-                    Text(L10n.tr("Go to pin"))
-                        .font(.subheadline.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 50)
-                }
-                .locusActionStyle(prominent: true, tint: LocusTheme.accent)
-                .disabled(!session.canWrite || session.pin == nil)
-                if session.canStop {
-                    Button { session.stop(pairing: pairing) } label: {
-                        Text(L10n.tr("Stop"))
-                            .font(.subheadline.weight(.semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 50)
-                    }
-                    .locusActionStyle(prominent: true, tint: LocusTheme.danger)
-                    .disabled(!session.canRetryRestore)
-                }
-            }
         }
         .foregroundStyle(LocusTheme.ink)
         .contentShape(Rectangle())
         .onTapGesture { /* Absorb near-misses between actions instead of dropping a map pin. */ }
-    }
-
-    private var actionLayout: AnyLayout {
-        dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: 10))
-            : AnyLayout(HStackLayout(spacing: 10))
     }
 
     private var modeSelector: some View {
@@ -110,26 +91,4 @@ struct BottomControlsView: View {
         .locusGlass(.regular, in: Capsule())
     }
 
-    private var joystickButton: some View {
-        Button {
-            if session.joystickActive {
-                session.stopJoystick()
-            } else {
-                session.startJoystick(pairing: pairing)
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "dot.circle.and.hand.point.up.left.fill")
-                Text(session.joystickActive ? L10n.tr("On") : L10n.tr("Joy"))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .font(.subheadline.weight(.semibold))
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 50)
-        }
-        .locusActionStyle(prominent: session.joystickActive, tint: LocusTheme.accentSecondary)
-        .disabled(!session.canWrite)
-        .accessibilityLabel(L10n.tr("Movement joystick"))
-        .accessibilityAddTraits(session.joystickActive ? .isSelected : [])
-    }
 }
