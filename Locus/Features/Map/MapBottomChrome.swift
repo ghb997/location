@@ -49,7 +49,7 @@ struct MapBottomChrome: View {
         .scrollIndicators(.visible)
         .scrollBounceBehavior(.basedOnSize)
         .scrollDisabled(contentHeight > 0 && contentHeight <= informationHeightLimit)
-        .defaultScrollAnchor(.bottom, for: .alignment)
+        .defaultScrollAnchor(.top)
         .frame(height: min(contentHeight > 0 ? contentHeight : informationHeightLimit, informationHeightLimit))
     }
 
