@@ -6,15 +6,26 @@ struct BottomControlsView: View {
     @EnvironmentObject private var session: SpoofSession
     @Binding var showSettings: Bool
     @Binding var showPlaces: Bool
+    var joystickAvailableHeight: CGFloat = 148
+
+    private var joystickSize: CGFloat { min(148, max(0, joystickAvailableHeight)) }
 
     var body: some View {
         LocusGlassContainer(spacing: 10) {
             VStack(spacing: 12) {
-                if session.joystickActive {
-                    JoystickPad { vector in
+                if session.joystickActive && joystickSize >= 50 {
+                    // At full travel the thumb reaches the 148-point outer frame.
+                    // Scale that frame and the 132-point glass circle together.
+                    JoystickPad(diameter: joystickSize * 132 / 148) { vector in
                         session.updateJoystick(vector: vector)
                     }
-                    .frame(width: 148, height: 148)
+                    .frame(width: joystickSize, height: joystickSize)
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: JoystickLayoutPreferenceKey.self,
+                                value: JoystickLayout(frame: geometry.frame(in: .global)))
+                        }
+                    }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 

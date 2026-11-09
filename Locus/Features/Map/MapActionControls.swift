@@ -52,7 +52,7 @@ struct MapActionControls: View {
             .frame(minHeight: 44)
         }
         .locusActionStyle(prominent: session.joystickActive, tint: LocusTheme.accentSecondary)
-        .disabled(!session.canWrite)
+        .disabled(!session.joystickActive && !session.canWrite)
         .accessibilityLabel(L10n.tr("Movement joystick"))
         .accessibilityAddTraits(session.joystickActive ? .isSelected : [])
     }

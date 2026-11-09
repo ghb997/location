@@ -83,15 +83,21 @@ final class SpoofSession: ObservableObject {
         if scenario == .guideRestoration {
             restorationRequired = true
             canWrite = false
-        } else if scenario.showsActiveRoute {
+        } else if scenario.showsActiveRoute || scenario.showsJoystick {
             status = .active
             // The pending target deliberately differs from the active position.
             simulated = .init(latitude: 31.2296, longitude: 121.4655)
+        }
+        if scenario.showsActiveRoute {
             routeState = .playing
             currentRoute = RouteTrack(name: "预览路线", coordinates: [
                 .init(latitude: 31.23, longitude: 121.47),
                 .init(latitude: 31.24, longitude: 121.48)
             ])
+        }
+        if scenario.showsJoystick {
+            joystickActive = true
+            travelMode = .drive
         }
     }
 

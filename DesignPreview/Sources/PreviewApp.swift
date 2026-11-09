@@ -8,11 +8,20 @@ enum PreviewScenario: String {
     case guidePairing = "guide-pairing"
     case guideRestoration = "guide-restoration"
     case compactHeight = "compact-height"
+    case activeJoystick = "active-joystick"
+    case joystickReducedTransparency = "joystick-reduced-transparency"
+    case joystickCompactHeight = "joystick-compact-height"
 
     var showsActiveRoute: Bool {
         [PreviewScenario.activeRoute, .largeType, .reducedTransparency, .compactHeight].contains(self)
     }
 
+    var showsJoystick: Bool {
+        [PreviewScenario.activeJoystick, .joystickReducedTransparency, .joystickCompactHeight].contains(self)
+    }
+
+    var usesCompactHeight: Bool { self == .compactHeight || self == .joystickCompactHeight }
+    var usesLargeType: Bool { self == .largeType || usesCompactHeight }
     var isGuide: Bool { self == .guidePairing || self == .guideRestoration }
 
     static var requested: PreviewScenario {
@@ -34,7 +43,7 @@ struct LocationDesignPreviewApp: App {
                 .environmentObject(session)
                 .environmentObject(pairing)
                 .environment(\.dynamicTypeSize,
-                             scenario == .largeType || scenario == .compactHeight ? .accessibility2 : .large)
+                             scenario.usesLargeType ? .accessibility2 : .large)
                 .preferredColorScheme(.light)
                 .tint(LocusTheme.accent)
         }
@@ -55,6 +64,7 @@ private struct ComponentPreview: View {
     @State private var topContentHeight: CGFloat = 0
     @State private var topChromeHeight: CGFloat = 0
     @State private var bottomChromeHeight: CGFloat = 0
+    @State private var joystickLayout = JoystickLayout()
 
     var body: some View {
         Group {
@@ -64,7 +74,7 @@ private struct ComponentPreview: View {
                     ConnectionGuideSheet(guide: guide,
                         onOpenSettings: { _ in }, onCheckConnection: {}, onRestoreLocation: {})
                 }
-            } else if scenario == .compactHeight {
+            } else if scenario.usesCompactHeight {
                 VStack(spacing: 20) {
                     fixtureLabel("受限高度组件 · 合成地图 · 320 pt\n非横屏实测")
                     mapComposition.frame(height: 320).clipped()
@@ -83,6 +93,10 @@ private struct ComponentPreview: View {
         .onChange(of: colorScheme) { _, _ in recordObservedEnvironment() }
         .onChange(of: topChromeHeight) { _, _ in recordObservedEnvironment() }
         .onChange(of: bottomChromeHeight) { _, _ in recordObservedEnvironment() }
+        .onPreferenceChange(JoystickLayoutPreferenceKey.self) { layout in
+            joystickLayout = layout
+            recordObservedEnvironment()
+        }
     }
 
     private var mapComposition: some View {
@@ -90,6 +104,7 @@ private struct ComponentPreview: View {
         ZStack(alignment: .bottom) {
             ZStack(alignment: .top) {
                 SyntheticMap(hasRoute: scenario.showsActiveRoute,
+                    hasSimulatedPosition: session.simulated != nil,
                     topInset: topChromeHeight, bottomInset: bottomChromeHeight)
                 ScrollView {
                 LocusGlassContainer(spacing: 12) {
@@ -143,6 +158,9 @@ private struct ComponentPreview: View {
     }
 
     private func recordObservedEnvironment() {
+        let joystickFrame = joystickLayout.frame ?? .zero
+        let joystickViewport = joystickLayout.viewport ?? .zero
+        let joystickReady = !scenario.showsJoystick || (!joystickFrame.isEmpty && !joystickViewport.isEmpty)
         let values: [String: Any] = [
             "scenario": scenario.rawValue,
             "reduceTransparency": reduceTransparency,
@@ -151,12 +169,15 @@ private struct ComponentPreview: View {
             "dynamicTypeSize": String(describing: dynamicTypeSize),
             "isAccessibilitySize": dynamicTypeSize.isAccessibilitySize,
             "language": Bundle.main.preferredLocalizations.first ?? "unknown",
-            "renderReady": scenario.isGuide || (topChromeHeight > 0 && bottomChromeHeight > 0),
+            "renderReady": scenario.isGuide || (topChromeHeight > 0 && bottomChromeHeight > 0 && joystickReady),
             "guideTopic": scenario.isGuide ? guide.topic.rawValue : "none",
             "guideActionsInert": scenario.isGuide,
             "topChromeHeight": topChromeHeight,
             "bottomChromeHeight": bottomChromeHeight,
-            "constrainedContainerHeight": scenario == .compactHeight ? 320 : 0,
+            "constrainedContainerHeight": scenario.usesCompactHeight ? 320 : 0,
+            "joystickActive": session.joystickActive,
+            "joystickFrame": [joystickFrame.minX, joystickFrame.minY, joystickFrame.width, joystickFrame.height],
+            "joystickViewport": [joystickViewport.minX, joystickViewport.minY, joystickViewport.width, joystickViewport.height],
             "simulatedAndPendingAreSeparate": session.simulated.map { simulated in
                 session.pin.map { simulated.latitude != $0.latitude || simulated.longitude != $0.longitude } ?? false
             } ?? false
@@ -176,6 +197,7 @@ private struct ComponentPreview: View {
 /// without requiring MapKit network tiles or representing a real location fix.
 private struct SyntheticMap: View {
     let hasRoute: Bool
+    let hasSimulatedPosition: Bool
     let topInset: CGFloat
     let bottomInset: CGFloat
 
@@ -234,7 +256,7 @@ private struct SyntheticMap: View {
                 .position(x: geometry.size.width * 0.53,
                           y: (geometry.size.height + topInset - bottomInset) / 2)
 
-            if hasRoute {
+            if hasSimulatedPosition {
                 Circle().fill(LocusTheme.accent)
                     .frame(width: 14, height: 14)
                     .overlay(Circle().stroke(.white, lineWidth: 2))

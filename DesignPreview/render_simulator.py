@@ -13,7 +13,12 @@ from pathlib import Path
 
 BUNDLE_ID = "com.ghb997.location.designpreview"
 SCENARIOS = ("idle", "active-route", "large-type", "reduced-transparency",
-             "guide-pairing", "guide-restoration", "compact-height")
+             "guide-pairing", "guide-restoration", "compact-height",
+             "active-joystick", "joystick-reduced-transparency", "joystick-compact-height")
+JOYSTICK_SCENARIOS = ("active-joystick", "joystick-reduced-transparency", "joystick-compact-height")
+COMPACT_SCENARIOS = ("compact-height", "joystick-compact-height")
+LARGE_TYPE_SCENARIOS = ("large-type", *COMPACT_SCENARIOS)
+REDUCED_TRANSPARENCY_SCENARIOS = ("reduced-transparency", "joystick-reduced-transparency")
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -111,13 +116,13 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
     runtime, targets = available_targets()
     manifest = {
-        "scope": "Production SwiftUI component rendering on a synthetic map with fake session state; guide callbacks are inert. The compact-height scenario is a labeled 320-point component container, not landscape or keyboard interaction testing. Not the full app, real map tiles, MapKit camera validation, native connection, real-device positioning, or hardware validation.",
+        "scope": "Production SwiftUI component rendering on a synthetic map with fake session state; guide callbacks are inert. Compact-height scenarios use a labeled 320-point component container. Joystick scenarios render the production pad for visual inspection. Gesture cancellation, landscape and keyboard interactions, full-app MapKit camera behavior, native connections and hardware positioning require separate validation.",
         "commit": run("git", "rev-parse", "HEAD").strip(),
         "runtime": runtime,
         "device_appearance": "dark",
         "app_appearance": "light (Info.plist and preferredColorScheme)",
         "language": "zh-Hans",
-        "accessibility": "Fixture injects accessibility2 for large-type and compact-height. Simulator Accessibility preferences set reduceTransparency for reduced-transparency and reduceMotion for all scenarios; actual SwiftUI environment values are checked before screenshots.",
+        "accessibility": "Fixture injects accessibility2 for large-type and both compact-height scenarios. Simulator Accessibility preferences set reduceTransparency for both reduced-transparency scenarios and reduceMotion for all scenarios; actual SwiftUI environment values are checked before screenshots.",
         "screenshots": [],
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -140,7 +145,7 @@ def main() -> None:
                 raise RuntimeError(f"Simulator data container does not exist: {container}")
             for scenario in SCENARIOS:
                 active_scenario = scenario
-                reduced = scenario == "reduced-transparency"
+                reduced = scenario in REDUCED_TRANSPARENCY_SCENARIOS
                 environment_path = container / "Documents" / f"preview-environment-{scenario}.json"
                 environment_path.unlink(missing_ok=True)
                 # Matches appium-ios-simulator's setReduceTransparency preference.
@@ -159,8 +164,21 @@ def main() -> None:
                     raise RuntimeError(f"Simulator accessibility preferences did not reach the app: {observed}")
                 if observed.get("language") != "zh-Hans":
                     raise RuntimeError(f"Chinese localization was not selected: {observed}")
-                if observed.get("isAccessibilitySize") != (scenario in ("large-type", "compact-height")):
+                if observed.get("isAccessibilitySize") != (scenario in LARGE_TYPE_SCENARIOS):
                     raise RuntimeError(f"Wrong Dynamic Type size: {observed}")
+                if observed.get("joystickActive") != (scenario in JOYSTICK_SCENARIOS):
+                    raise RuntimeError(f"Wrong joystick state: {observed}")
+                if scenario in JOYSTICK_SCENARIOS:
+                    x, y, width, height = observed["joystickFrame"]
+                    viewport_x, viewport_y, viewport_width, viewport_height = observed["joystickViewport"]
+                    if width < 49.5 or abs(width - height) > 0.5:
+                        raise RuntimeError(f"Joystick touch area is too small or distorted: {observed}")
+                    if (x < viewport_x - 0.5 or y < viewport_y - 0.5
+                            or x + width > viewport_x + viewport_width + 0.5
+                            or y + height > viewport_y + viewport_height + 0.5):
+                        raise RuntimeError(f"Joystick is clipped by the information viewport: {observed}")
+                    if scenario != "joystick-compact-height" and abs(width - 148) > 0.5:
+                        raise RuntimeError(f"Standard joystick size changed: {observed}")
                 expected_guide = {"guide-pairing": "pairing", "guide-restoration": "restoration"}.get(scenario, "none")
                 if observed.get("guideTopic") != expected_guide:
                     raise RuntimeError(f"Wrong guide scenario: {observed}")
@@ -168,10 +186,10 @@ def main() -> None:
                     raise RuntimeError(f"Guide callbacks must be inert in the fixture: {observed}")
                 if observed.get("renderReady") is not True:
                     raise RuntimeError(f"Component layout is not ready: {observed}")
-                if scenario in ("active-route", "large-type", "reduced-transparency", "compact-height"):
+                if scenario in ("active-route", "large-type", "reduced-transparency", "compact-height", *JOYSTICK_SCENARIOS):
                     if observed.get("simulatedAndPendingAreSeparate") is not True:
                         raise RuntimeError(f"Active position and pending target must differ: {observed}")
-                if scenario == "compact-height":
+                if scenario in COMPACT_SCENARIOS:
                     if observed.get("constrainedContainerHeight") != 320:
                         raise RuntimeError(f"Wrong constrained container height: {observed}")
                     if observed.get("topChromeHeight", 0) + observed.get("bottomChromeHeight", 0) >= 320:

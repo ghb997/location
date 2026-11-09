@@ -4,6 +4,9 @@ import SwiftUI
 /// Map pin with Liquid Glass “Remove Pin” menu and long-press drag.
 struct MapDropPin: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @GestureState private var gestureActive = false
+    @State private var dragStarted = false
     var selected: Bool
     var isDragging: Bool
     var onSelect: () -> Void
@@ -42,6 +45,14 @@ struct MapDropPin: View {
             onSelect()
         }
         .gesture(dragGesture)
+        .onChange(of: gestureActive) { _, active in
+            // GestureState resets even when cancellation skips onEnded.
+            if !active { finishDragging() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { finishDragging() }
+        }
+        .onDisappear { finishDragging() }
         .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.78), value: selected)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isDragging)
         .accessibilityElement(children: .combine)
@@ -55,13 +66,16 @@ struct MapDropPin: View {
     private var dragGesture: some Gesture {
         LongPressGesture(minimumDuration: 0.35)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .updating($gestureActive) { _, active, _ in active = true }
             .onChanged { value in
+                guard scenePhase == .active else { return }
                 switch value {
                 case .first(true):
                     break
                 case .second(true, let drag):
                     if let drag {
-                        if !isDragging {
+                        if !dragStarted {
+                            dragStarted = true
                             onDragBegan()
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         }
@@ -72,7 +86,13 @@ struct MapDropPin: View {
                 }
             }
             .onEnded { _ in
-                onDragEnded()
+                finishDragging()
             }
+    }
+
+    private func finishDragging() {
+        guard dragStarted else { return }
+        dragStarted = false
+        onDragEnded()
     }
 }

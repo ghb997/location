@@ -338,6 +338,38 @@ final class SessionIntegrationTests: XCTestCase {
         XCTAssertEqual(rig.clock.pendingCount, 0)
     }
 
+    func testFailedStopPreservesLocationKeeperUntilClearSucceeds() async {
+        let rig = SessionRig()
+        defer { rig.dispose() }
+        rig.session.startLocationUpdates()
+        rig.session.teleport(to: origin, pairing: rig.pairing)
+        await waitFor { rig.session.status == .active && !rig.session.isBusy }
+        XCTAssertTrue(rig.keeper.updatesRequested)
+        XCTAssertTrue(rig.keeper.simulationActive)
+
+        rig.transport.clearResult = .failure(.locationClear)
+        rig.session.stop(pairing: rig.pairing)
+        await waitFor { rig.session.status.isDropped && !rig.session.isBusy }
+        XCTAssertEqual(rig.keeper.stops, 0)
+        XCTAssertTrue(rig.keeper.updatesRequested)
+        XCTAssertTrue(rig.keeper.simulationActive)
+        XCTAssertEqual(rig.keeper.freshRequests, 0)
+        XCTAssertTrue(rig.store.hasPendingRecord)
+
+        rig.session.reconnect(pairing: rig.pairing)
+        await waitFor { rig.session.status == .active && !rig.session.isBusy }
+        XCTAssertTrue(rig.keeper.updatesRequested)
+        XCTAssertTrue(rig.keeper.simulationActive)
+
+        rig.transport.clearResult = .success(())
+        rig.session.stop(pairing: rig.pairing)
+        await waitFor { rig.session.status == .idle && !rig.session.isBusy }
+        XCTAssertEqual(rig.keeper.stops, 1)
+        XCTAssertFalse(rig.keeper.simulationActive)
+        XCTAssertEqual(rig.keeper.freshRequests, 1)
+        XCTAssertFalse(rig.store.hasPendingRecord)
+    }
+
     func testReachableEndpointStillUsesBoundedNativeRecoveryAttempts() async {
         let rig = SessionRig()
         defer { rig.dispose() }
@@ -513,10 +545,20 @@ private final class SessionTestKeeper: LocationKeeping {
     var onAuthorization: ((CLAuthorizationStatus) -> Void)?
     var onIssue: ((String?) -> Void)?
     var freshRequests = 0
-    func start() {}
-    func stop() {}
-    func requestFreshSystemFix() { freshRequests += 1 }
-    func setSimulationActive(_ active: Bool) {}
+    var stops = 0
+    var updatesRequested = false
+    var simulationActive = false
+    func start() { updatesRequested = true }
+    func stop() {
+        stops += 1
+        updatesRequested = false
+        simulationActive = false
+    }
+    func requestFreshSystemFix() {
+        freshRequests += 1
+        start()
+    }
+    func setSimulationActive(_ active: Bool) { simulationActive = active }
     func setBackgroundEnabled(_ enabled: Bool) {}
 }
 

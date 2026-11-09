@@ -265,7 +265,7 @@ struct MapHomeView: View {
         VStack(spacing: 10) {
             StatusBarView(onHelp: onHelp)
 
-            MapSearchBar(searchText: $searchText, searchFocused: $searchFocused) { search.query = $0 }
+            MapSearchBar(searchText: $searchText, searchFocused: $searchFocused, onQueryChange: updateSearchQuery)
 
             if !searchText.isEmpty && !search.results.isEmpty {
                 MapSearchResults(items: search.results, onSelect: select)
@@ -353,6 +353,14 @@ struct MapHomeView: View {
     private func saveFavorite() {
         guard let pin = session.pin else { return }
         session.addFavorite(name: session.suggestedFavoriteName(for: pin, fallback: session.pinName), coordinate: pin)
+    }
+
+    private func updateSearchQuery(_ query: String) {
+        // A successful selection clears both values before onChange runs.
+        // Only edits from the search field invalidate a pending selection.
+        guard query != search.query else { return }
+        beginTargetChange()
+        search.query = query
     }
 
     private func select(completion: MKLocalSearchCompletion) {

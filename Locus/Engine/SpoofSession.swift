@@ -418,9 +418,9 @@ final class SpoofSession: ObservableObject {
             isBusy = false
             isStopping = false
             endBackground()
-            locationKeeper.stop()
             switch result {
             case .success:
+                locationKeeper.stop()
                 simulated = nil
                 status = .idle
                 lastError = nil
