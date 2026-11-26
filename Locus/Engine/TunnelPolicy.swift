@@ -30,6 +30,19 @@ enum TunnelPolicy {
         return addresses.contains { allowed.contains($0) }
     }
 
+    static func hasVPNInterface(targetIP: String, routeSource: String?, interfaces: [(name: String, address: String)]) -> Bool {
+        guard TunnelConfig.isValidIP(targetIP), let lastDot = targetIP.lastIndex(of: ".") else { return false }
+        let tunnelInterfaces = interfaces.filter {
+            $0.name.hasPrefix("utun") || $0.name.hasPrefix("ipsec") || $0.name.hasPrefix("ppp")
+        }
+        if let routeSource, interfaces.contains(where: { $0.address == routeSource }) {
+            return tunnelInterfaces.contains { $0.address == routeSource }
+        }
+        // Older LocalDevVPN builds assign an address in the peer's /24 directly to the tunnel.
+        let prefix = String(targetIP[...lastDot])
+        return tunnelInterfaces.contains { $0.address.hasPrefix(prefix) }
+    }
+
     /// Exports only bounded, non-sensitive stage and error information. Native
     /// messages may contain addresses, file paths or pairing identifiers.
     static func exportSummary(stage: TunnelStage?, source: TunnelEndpoint.Source?, port: UInt16?,

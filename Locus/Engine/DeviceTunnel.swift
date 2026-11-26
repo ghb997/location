@@ -34,8 +34,22 @@ enum TunnelConfig {
     static var targetIP: String {
         let stored = UserDefaults.standard.string(forKey: defaultsKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let stored, !stored.isEmpty else { return defaultIP }
-        return stored
+        guard let stored else { return defaultIP }
+        return normalizedTargetIP(stored) ?? stored
+    }
+
+    /// LocalDevVPN may display a peer as an IPv4 address with a CIDR suffix.
+    static func normalizedTargetIP(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return defaultIP }
+        let parts = trimmed.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+        let host = String(parts[0])
+        guard isValidIP(host) else { return nil }
+        if parts.count == 2 {
+            let prefix = parts[1]
+            guard let length = UInt8(prefix), length <= 32, String(length) == prefix else { return nil }
+        }
+        return host
     }
 
     static func isValidIP(_ value: String) -> Bool {
@@ -48,9 +62,7 @@ enum TunnelConfig {
 
     @discardableResult
     static func setTargetIP(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = trimmed.isEmpty ? defaultIP : trimmed
-        guard isValidIP(normalized) else { return false }
+        guard let normalized = normalizedTargetIP(value) else { return false }
         UserDefaults.standard.set(normalized, forKey: defaultsKey)
         return true
     }

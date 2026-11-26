@@ -2,6 +2,55 @@ import XCTest
 @testable import LocusCore
 
 final class TunnelPolicyTests: XCTestCase {
+    func testRoutedPeerUsesVPNSourceEvenWhenItIsInADifferentSubnet() {
+        for name in ["utun3", "ipsec0", "ppp0"] {
+            let interfaces = [(name: "en0", address: "192.168.1.8"), (name: name, address: "10.7.1.1")]
+            XCTAssertTrue(TunnelPolicy.hasVPNInterface(targetIP: "10.7.0.1", routeSource: "10.7.1.1",
+                                                       interfaces: interfaces), name)
+        }
+    }
+
+    func testNonVPNRouteTakesPrecedenceOverUnrelatedVPNInPeerSubnet() {
+        let interfaces = [(name: "en0", address: "10.7.0.5"), (name: "utun0", address: "10.7.0.8")]
+        XCTAssertFalse(TunnelPolicy.hasVPNInterface(targetIP: "10.7.0.1", routeSource: "10.7.0.5",
+                                                    interfaces: interfaces))
+    }
+
+    func testLegacyInterfaceHintUsesConfiguredPeerSubnetAndRequiresAVPN() {
+        let peer = "172.20.4.1"
+        XCTAssertTrue(TunnelPolicy.hasVPNInterface(targetIP: peer, routeSource: nil,
+                                                   interfaces: [("utun2", "172.20.4.9")]))
+        XCTAssertFalse(TunnelPolicy.hasVPNInterface(targetIP: peer, routeSource: nil,
+                                                    interfaces: [("en0", peer), ("utun1", "172.20.40.9")]))
+        XCTAssertFalse(TunnelPolicy.hasVPNInterface(targetIP: peer, routeSource: nil, interfaces: []))
+    }
+
+    func testTunnelSettingAcceptsCIDRWithoutChangingThePeerAddress() {
+        XCTAssertEqual(TunnelConfig.normalizedTargetIP(" 10.7.0.1/32\n"), "10.7.0.1")
+        XCTAssertEqual(TunnelConfig.normalizedTargetIP("172.20.4.17/24"), "172.20.4.17")
+        XCTAssertEqual(TunnelConfig.normalizedTargetIP("172.20.4.17/0"), "172.20.4.17")
+        XCTAssertEqual(TunnelConfig.normalizedTargetIP("172.20.4.17"), "172.20.4.17")
+        XCTAssertEqual(TunnelConfig.normalizedTargetIP("  "), TunnelConfig.defaultIP)
+        for value in ["/32", "10.7.0.1/", "10.7.0.1/33", "10.7.0.1/-1", "10.7.0.1/24/32", "10.7.0.256/32"] {
+            XCTAssertNil(TunnelConfig.normalizedTargetIP(value), value)
+        }
+        XCTAssertFalse(TunnelConfig.isValidIP("10.7.0.1/32"))
+    }
+
+    func testTunnelSettingReadsStoredCIDRAndKeepsLastEndpointAfterInvalidInput() {
+        let defaults = UserDefaults.standard
+        let key = TunnelConfig.defaultsKey
+        let previous = defaults.object(forKey: key)
+        defer { defaults.set(previous, forKey: key) }
+
+        defaults.set("172.20.4.17/24", forKey: key)
+        XCTAssertEqual(TunnelConfig.targetIP, "172.20.4.17")
+        XCTAssertTrue(TunnelConfig.setTargetIP("10.7.0.1/32"))
+        XCTAssertEqual(defaults.string(forKey: key), "10.7.0.1")
+        XCTAssertFalse(TunnelConfig.setTargetIP("10.7.1.1/bad"))
+        XCTAssertEqual(TunnelConfig.targetIP, "10.7.0.1")
+    }
+
     func testDiscoveryRejectsOtherDevicesButAcceptsDeviceAndTunnelAddresses() {
         XCTAssertFalse(TunnelPolicy.accepts(addresses: ["192.168.1.7"], targetIP: "10.7.0.1", localAddresses: ["192.168.1.8"]))
         XCTAssertTrue(TunnelPolicy.accepts(addresses: ["192.168.1.8"], targetIP: "10.7.0.1", localAddresses: ["192.168.1.8"]))

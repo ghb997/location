@@ -84,7 +84,7 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 
 ## 从源码构建
 
-需要 macOS、**Xcode 26+** 和 XcodeGen。Windows 用户可直接使用本仓库的 GitHub Actions。
+要构建支持 iPhone Duo 全屏的 IPA，请在 macOS 上使用 **Xcode 27.2（iOS 27.2 SDK）** 和 XcodeGen。应用的最低系统版本为 iOS 18.0。Windows 用户可使用本仓库的 GitHub Actions 构建。
 
 ```bash
 brew install xcodegen

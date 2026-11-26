@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showNameEasterEgg = false
     @State private var tunnelIP = TunnelConfig.targetIP
     @State private var localDevVPNInstalled = LocalDevVPN.isInstalled
+    @State private var tunnelInterfaceDetected = false
     @Environment(\.scenePhase) private var scenePhase
 
     private var supportsOnDevicePairing: Bool {
@@ -117,7 +118,7 @@ struct SettingsView: View {
                         TextField(L10n.tr("Service port (1–65535)"), text: $portText).keyboardType(.numberPad)
                     }
                     LabeledContent(L10n.tr("VPN interface hint")) {
-                        Text(LocalDevVPN.isConnected ? L10n.tr("Interface detected") : L10n.tr("No matching interface detected"))
+                        Text(tunnelInterfaceDetected ? L10n.tr("Interface detected") : L10n.tr("No matching interface detected"))
                             .foregroundStyle(.secondary)
                     }
                     Button(L10n.tr("Save tunnel IP")) {
@@ -304,6 +305,7 @@ struct SettingsView: View {
             }
             .onAppear {
                 localDevVPNInstalled = LocalDevVPN.isInstalled
+                tunnelInterfaceDetected = LocalDevVPN.isConnected
             }
             .onDisappear {
                 if session.isRepairingRecovery { session.endRecoveryRepair() }
@@ -311,7 +313,11 @@ struct SettingsView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     localDevVPNInstalled = LocalDevVPN.isInstalled
+                    tunnelInterfaceDetected = LocalDevVPN.isConnected
                 }
+            }
+            .onChange(of: diagnostics.checkedAt) { _, _ in
+                tunnelInterfaceDetected = LocalDevVPN.isConnected
             }
             }
         }
@@ -341,9 +347,7 @@ struct SettingsView: View {
             session.lastError = L10n.tr("Enter a service port from 1 to 65535.")
             return false
         }
-        let normalizedIP = tunnelIP.trimmingCharacters(in: .whitespacesAndNewlines)
-        let target = normalizedIP.isEmpty ? TunnelConfig.defaultIP : normalizedIP
-        guard TunnelConfig.isValidIP(target) else {
+        guard let target = TunnelConfig.normalizedTargetIP(tunnelIP) else {
             session.lastError = LocationEngineError.invalidIP.localizedDescription
             return false
         }
@@ -351,11 +355,9 @@ struct SettingsView: View {
            !session.updateRecoveryConfiguration(targetIP: target, pairing: pairing) { return false }
         if !automaticPort { _ = TunnelConfig.setPort(portText) }
         UserDefaults.standard.set(automaticPort, forKey: TunnelConfig.automaticPortKey)
-        guard TunnelConfig.setTargetIP(tunnelIP) else {
-            session.lastError = LocationEngineError.invalidIP.localizedDescription
-            return false
-        }
-        tunnelIP = TunnelConfig.targetIP
+        TunnelConfig.setTargetIP(target)
+        tunnelIP = target
+        tunnelInterfaceDetected = LocalDevVPN.isConnected
         return true
     }
 }
