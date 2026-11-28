@@ -45,11 +45,13 @@
 		7CC917419DEC5A3D31E01E91 /* MapToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0AA3D4CD5D131982B21353 /* MapToolbar.swift */; };
 		824D08C2AC8FD477F58DE51F /* LocalDevVPN.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAD463F53BD704A35A8E65F /* LocalDevVPN.swift */; };
 		83D63478BF012E572D329843 /* PairableHostAdvertiser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD401B2BF295561897BDABE6 /* PairableHostAdvertiser.swift */; };
+		86400629500182D0A20E7331 /* LocalDevVPN-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 9CC6EF33ECDF6ECFE8D186A5 /* LocalDevVPN-LICENSE.txt */; };
 		87B0D41458D6AF0D39C9AAA4 /* RoutePlannerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D76779E56819A74B78236EF1 /* RoutePlannerSheet.swift */; };
 		88BF546D907D1981F683E06C /* MapActionControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C72D0239D203F2344A1CD5 /* MapActionControls.swift */; };
 		8CFD7621CBB671DAE76D75D6 /* mainland-coverage.json in Resources */ = {isa = PBXBuildFile; fileRef = 892277BFCA6D228DCFD357BB /* mainland-coverage.json */; };
 		8EAFB147F0F0E2AAE207D276 /* RouteBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC0C702516F159A7EF6D853 /* RouteBuilder.swift */; };
 		976D8B4B49C6B6588EA59B2F /* LocusApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03DE64DA7097F210F1075553 /* LocusApp.swift */; };
+		986984514A92B652689F2D4D /* TunnelProvider.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7289DDB211143DA27917B867 /* TunnelProvider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9BA258BD3326B9BC1F062456 /* SetupVPNPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91EA06492DD888E966A178C1 /* SetupVPNPage.swift */; };
 		9C3937D519EE9A84696DF085 /* SessionRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7A0C384E1A460F1C906898 /* SessionRuntime.swift */; };
 		A423663CC99BF7E7910E159D /* MapRouteSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603C0810F30580F41F9BF591 /* MapRouteSelection.swift */; };
@@ -59,12 +61,14 @@
 		B00A96954EDA079049D034AA /* RoutePlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AFCC12A928B2F8D10B2BA0F /* RoutePlaybackControls.swift */; };
 		B10A777C5622EE884A890643 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1AF0F32E88B4227CA45694 /* RootView.swift */; };
 		B12E919DBC4441E728577E16 /* LocationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CC0B2E89A908A2687F71A89 /* LocationTransport.swift */; };
+		B302C0BF0045B159F20C8611 /* LocalDevVPN-Attribution.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4C8E155A92CDDA0DABA5EA2B /* LocalDevVPN-Attribution.txt */; };
 		B355263A22F1B745F8BBDBCE /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8BA483497993E4F3265C4E /* StatusBarView.swift */; };
 		B3B52473439D2173D79EC340 /* RouteDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA1A27640843EEFE60957D3 /* RouteDocument.swift */; };
 		B49E912FD280961E597DA40E /* MapSearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 093774B56BE6B5E062C7BA34 /* MapSearchBar.swift */; };
 		B72D90E372487512692DA453 /* RoutePlaybackCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648D0F40C442FAD22F64A875 /* RoutePlaybackCore.swift */; };
 		BAADBB65BD9C17F6F3B78C80 /* LatestOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2F583DC0E8644F0C6F38AC /* LatestOperation.swift */; };
 		BAEFD7E4233656D9AE09F7EC /* CoordinateTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723D2BB8E764869195639096 /* CoordinateTransform.swift */; };
+		BB9B74F091CD36FE1682461E /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BDF2B24C10101B5F8B84ACC /* PacketTunnelProvider.swift */; };
 		BC9FE9F290687AD683EDC976 /* FreshEndpointRestorationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49B38AE9C79741AB6FD35132 /* FreshEndpointRestorationPolicy.swift */; };
 		BEFCE5D431D47B361220EE15 /* ConnectionGuideContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B9F2D9B3D9F013A6BC6881 /* ConnectionGuideContext.swift */; };
 		C259998E5B73657AFB84689E /* SetupComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFEBB3F5FF14F263B046F6FF /* SetupComponents.swift */; };
@@ -90,11 +94,36 @@
 		FE9032C8CF02CBA9BC4EEE02 /* SetupWelcomePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64D9C1895CBCFAC6C277D955 /* SetupWelcomePage.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		E48E1FBB1AF3B3DFC0F29B13 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EB04EC8B4299D1D64DC4EDE5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 454DF0F171D12EC90B90AA62;
+			remoteInfo = TunnelProvider;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		102D0B6D9EC32A109A2B86EE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				986984514A92B652689F2D4D /* TunnelProvider.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		03DE64DA7097F210F1075553 /* LocusApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocusApp.swift; sourceTree = "<group>"; };
 		07F63B359E89CAA2D611E8BA /* RouteDisplayGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDisplayGeometry.swift; sourceTree = "<group>"; };
 		089666A192702451A2BFC22A /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		093774B56BE6B5E062C7BA34 /* MapSearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchBar.swift; sourceTree = "<group>"; };
+		0BDF2B24C10101B5F8B84ACC /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		0E1C1367D937C33DF4F1FBE6 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1215333974DC503007268C0B /* ConnectionGuidePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionGuidePolicy.swift; sourceTree = "<group>"; };
 		12F8C20002B7070D21CBE9D2 /* NativeOperationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeOperationPolicy.swift; sourceTree = "<group>"; };
@@ -113,6 +142,7 @@
 		42EB44B227D666741F2C2AB6 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		49B38AE9C79741AB6FD35132 /* FreshEndpointRestorationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreshEndpointRestorationPolicy.swift; sourceTree = "<group>"; };
 		4BA1A27640843EEFE60957D3 /* RouteDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDocument.swift; sourceTree = "<group>"; };
+		4C8E155A92CDDA0DABA5EA2B /* LocalDevVPN-Attribution.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LocalDevVPN-Attribution.txt"; sourceTree = "<group>"; };
 		53C72D0239D203F2344A1CD5 /* MapActionControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapActionControls.swift; sourceTree = "<group>"; };
 		5415BEF759B8C8AF04096B3E /* BackgroundKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAlive.swift; sourceTree = "<group>"; };
 		56FC05E4879D1CD07DD2B6FE /* RouteGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteGeometry.swift; sourceTree = "<group>"; };
@@ -127,6 +157,7 @@
 		696428398FCE607C005810D7 /* PlaceSearchCompleter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceSearchCompleter.swift; sourceTree = "<group>"; };
 		6DF917A85B507FDDCF382E2F /* SilentAudioKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentAudioKeepAlive.swift; sourceTree = "<group>"; };
 		723D2BB8E764869195639096 /* CoordinateTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateTransform.swift; sourceTree = "<group>"; };
+		7289DDB211143DA27917B867 /* TunnelProvider.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TunnelProvider.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		729C497520870F1624BC543F /* MapSearchResults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSearchResults.swift; sourceTree = "<group>"; };
 		76A8A6B4A5F1975036CAFA09 /* PairingAudioPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingAudioPolicy.swift; sourceTree = "<group>"; };
 		7977CA785FF0B09F4F88DE7D /* PairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingStore.swift; sourceTree = "<group>"; };
@@ -146,6 +177,7 @@
 		91E2EBD3F6F937176E4EC13F /* DeviceTunnel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTunnel.swift; sourceTree = "<group>"; };
 		91EA06492DD888E966A178C1 /* SetupVPNPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupVPNPage.swift; sourceTree = "<group>"; };
 		9A2F583DC0E8644F0C6F38AC /* LatestOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatestOperation.swift; sourceTree = "<group>"; };
+		9CC6EF33ECDF6ECFE8D186A5 /* LocalDevVPN-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LocalDevVPN-LICENSE.txt"; sourceTree = "<group>"; };
 		AB1321490F7FFE9259002E39 /* IconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconButton.swift; sourceTree = "<group>"; };
 		ACC2AC17057EA04E73E1057A /* OfflineMainlandCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMainlandCoverage.swift; sourceTree = "<group>"; };
 		AD401B2BF295561897BDABE6 /* PairableHostAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairableHostAdvertiser.swift; sourceTree = "<group>"; };
@@ -201,10 +233,20 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		0E92AAC82BCEF5ABCA07C826 /* LocalDevVPN */ = {
+			isa = PBXGroup;
+			children = (
+				4C8E155A92CDDA0DABA5EA2B /* LocalDevVPN-Attribution.txt */,
+				9CC6EF33ECDF6ECFE8D186A5 /* LocalDevVPN-LICENSE.txt */,
+			);
+			path = LocalDevVPN;
+			sourceTree = "<group>";
+		};
 		1034C21D9930A5F35D463962 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				AEFB9A10F8784355D5344D95 /* Locus.app */,
+				7289DDB211143DA27917B867 /* TunnelProvider.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -265,6 +307,7 @@
 			children = (
 				D8943CD40A866E202F7964F6 /* AppIcon.icon */,
 				B9D7C7183910882434437EA5 /* Locus */,
+				C820815457CA2B98B480F0ED /* TunnelProvider */,
 				A3FB89DD9A662FFEED373A60 /* Vendor */,
 				1034C21D9930A5F35D463962 /* Products */,
 			);
@@ -297,6 +340,7 @@
 			isa = PBXGroup;
 			children = (
 				23291CD2DE893C55FE7B446B /* idevice */,
+				0E92AAC82BCEF5ABCA07C826 /* LocalDevVPN */,
 			);
 			path = Vendor;
 			sourceTree = "<group>";
@@ -380,6 +424,14 @@
 			path = Locus;
 			sourceTree = "<group>";
 		};
+		C820815457CA2B98B480F0ED /* TunnelProvider */ = {
+			isa = PBXGroup;
+			children = (
+				0BDF2B24C10101B5F8B84ACC /* PacketTunnelProvider.swift */,
+			);
+			path = TunnelProvider;
+			sourceTree = "<group>";
+		};
 		FA27A5BC6D7A370C663C36F1 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -395,16 +447,35 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		454DF0F171D12EC90B90AA62 /* TunnelProvider */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D93D043168691B918CA69CC1 /* Build configuration list for PBXNativeTarget "TunnelProvider" */;
+			buildPhases = (
+				273F926E0B695B43EF999E6E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TunnelProvider;
+			packageProductDependencies = (
+			);
+			productName = TunnelProvider;
+			productReference = 7289DDB211143DA27917B867 /* TunnelProvider.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		4896638691C4AFF8C4B6701D /* Locus */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 499F5785D4491853643B4C0D /* Build configuration list for PBXNativeTarget "Locus" */;
 			buildPhases = (
 				3D126E6D0964BF8D319384BC /* Sources */,
 				DD475AF090311C77FAF727EA /* Resources */,
+				102D0B6D9EC32A109A2B86EE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				2517DE708AF6FFA1069DD90A /* PBXTargetDependency */,
 			);
 			name = Locus;
 			packageProductDependencies = (
@@ -422,6 +493,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					454DF0F171D12EC90B90AA62 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					4896638691C4AFF8C4B6701D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -444,6 +519,7 @@
 			projectRoot = "";
 			targets = (
 				4896638691C4AFF8C4B6701D /* Locus */,
+				454DF0F171D12EC90B90AA62 /* TunnelProvider */,
 			);
 		};
 /* End PBXProject section */
@@ -456,6 +532,8 @@
 				170627CC7AAA8335B2A3277F /* AppIcon.icon in Resources */,
 				74A5BCF6953128864737A070 /* Assets.xcassets in Resources */,
 				00035BDD849D6B37BFE93A5A /* InfoPlist.strings in Resources */,
+				B302C0BF0045B159F20C8611 /* LocalDevVPN-Attribution.txt in Resources */,
+				86400629500182D0A20E7331 /* LocalDevVPN-LICENSE.txt in Resources */,
 				ED847D1532942B669973E18F /* Localizable.strings in Resources */,
 				31D7B14BBAF17E6622238175 /* NaturalEarth-LICENSE.txt in Resources */,
 				287645A724385E07F3C65F44 /* README.md in Resources */,
@@ -467,6 +545,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		273F926E0B695B43EF999E6E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB9B74F091CD36FE1682461E /* PacketTunnelProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3D126E6D0964BF8D319384BC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -549,6 +635,14 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		2517DE708AF6FFA1069DD90A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 454DF0F171D12EC90B90AA62 /* TunnelProvider */;
+			targetProxy = E48E1FBB1AF3B3DFC0F29B13 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXVariantGroup section */
 		021C58ADEC1F2BA204254D4E /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
@@ -571,6 +665,27 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		1916ABF4978468C534075863 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = TunnelProvider/TunnelProvider.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = TunnelProvider/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCUS_APP_BUNDLE_ID).TunnelProvider";
+				PRODUCT_NAME = TunnelProvider;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		28BC1FD1E1ADCF31A64625B3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -605,6 +720,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -618,6 +734,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCUS_APP_BUNDLE_ID = com.ghb997.location;
+				MARKETING_VERSION = 1.4.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -629,6 +747,27 @@
 			};
 			name = Release;
 		};
+		6DE59330B4265A375FCC5775 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = TunnelProvider/TunnelProvider.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = TunnelProvider/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCUS_APP_BUNDLE_ID).TunnelProvider";
+				PRODUCT_NAME = TunnelProvider;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		7FE184EA7F574C71EE5B684D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -636,8 +775,6 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/idevice";
@@ -647,14 +784,13 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.3.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
 					"-lc++",
 					"-lz",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ghb997.location;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCUS_APP_BUNDLE_ID)";
 				PRODUCT_NAME = location;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -698,6 +834,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -717,6 +854,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCUS_APP_BUNDLE_ID = com.ghb997.location;
+				MARKETING_VERSION = 1.4.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -736,8 +875,6 @@
 				CODE_SIGN_ENTITLEMENTS = Locus/Resources/Locus.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_BITCODE = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/idevice";
@@ -747,14 +884,13 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/idevice",
 				);
-				MARKETING_VERSION = 1.3.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lidevice_ffi",
 					"-lc++",
 					"-lz",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ghb997.location;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCUS_APP_BUNDLE_ID)";
 				PRODUCT_NAME = location;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -772,6 +908,15 @@
 			buildConfigurations = (
 				EC219525ECF2D2F87B9312BB /* Debug */,
 				7FE184EA7F574C71EE5B684D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D93D043168691B918CA69CC1 /* Build configuration list for PBXNativeTarget "TunnelProvider" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6DE59330B4265A375FCC5775 /* Debug */,
+				1916ABF4978468C534075863 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
