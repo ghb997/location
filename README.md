@@ -6,7 +6,8 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 
 ## 下载与使用
 
-- [下载 IPA](https://github.com/ghb997/location/releases/latest)
+- [内置 VPN 版 IPA 构建下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml?query=branch%3Acodex%2Fembedded-vpn)
+- [已发布版本](https://github.com/ghb997/location/releases/latest)
 - [中文安装指南](SETUP.md)
 - [自动构建记录与临时下载](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)
 - [代码检查与优化说明](docs/REVIEW.zh-CN.md)
@@ -17,9 +18,9 @@ location 使用 Apple 开发者定位模拟服务修改系统报告的位置，�
 
 **最低 iOS 18.0，支持 arm64 iPhone / iPad。** 包标识为 `com.ghb997.location`。
 
-发布的 `location-1.3.0-zh-Hans-unsigned.ipa` 是**未签名侧载包**，需通过自己的签名工具或兼容的 LiveContainer 环境安装，不能直接点击 IPA 安装。构建过程不需要上传 Apple 账号、证书或配对文件。
+**1.4.0 内置 VPN 版**将本机隧道随定位修改器一起安装。用支持 Network Extensions 的开发者团队给主 App 和扩展分别签名，直接安装到 iPhone，再到“设置 → 隧道”连接。CI 产物为 `location-1.4.0-zh-Hans-embedded-vpn-unsigned.ipa`。签名标识与权限见[安装指南](SETUP.md)。
 
-中文系统显示简体中文，并保留英文资源；可通过系统的应用语言设置选择语言。需要有效的 **RPPairing 文件、开发者模式及可达的回环开发者隧道**。推荐使用 LocalDevVPN；其他工具以实际连通检查为准。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件；上游的 iOS 27 本机配对入口予以保留，仍需对应系统的真机验证。
+中文系统显示简体中文，并保留英文资源。定位模拟需要有效的 **RPPairing 文件、开发者模式和已连接的本机隧道**。iOS 18–26 需在电脑上用 idevice_pair 生成配对文件。上游的 iOS 27 本机配对入口仍需对应系统的真机验证。
 
 ## 1.3.0 目标预览与操作指引
 
@@ -102,14 +103,14 @@ xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 ```
 
-若要通过 Xcode 直接安装到真机，请在 Signing & Capabilities 选择自己的开发者团队。GitHub Actions 自动运行测试、生成项目、编译真机应用并打包 IPA；构建产物保留 30 天，正式下载见 Releases。
+若要通过 Xcode 直接安装到真机，请在 Locus 和 TunnelProvider 两个 target 的 Signing & Capabilities 选择同一个开发者团队。可在项目级构建设置里修改 `LOCUS_APP_BUNDLE_ID`，两个 target 的标识会一起更新。内置版分支使用 GitHub 托管的 Mac 和 Xcode 26 兼容构建，Actions 产物保留 30 天。
 
 ## 验证
 
 ```bash
 python3 scripts/check_localization.py
 swift test
-python3 scripts/verify_ipa.py /path/to/location-1.3.0-zh-Hans-unsigned.ipa
+python3 scripts/verify_ipa.py /path/to/location-1.4.0-zh-Hans-embedded-vpn-unsigned.ipa
 ```
 
 `swift test` 在 macOS 上运行 GPX、坐标和配对格式的回归测试，不依赖真机 FFI。完整 iOS 编译由 Actions 验证。编译和静态检查不能替代真机上的定位、恢复真实 GPS、后台运行和各签名工具兼容性测试。
@@ -123,5 +124,7 @@ python3 scripts/verify_ipa.py /path/to/location-1.3.0-zh-Hans-unsigned.ipa
 - 本版未改写原始 idevice 二进制依赖，仍需随上游跟进系统兼容性。
 
 ## 许可与来源
+
+内置 VPN 扩展基于 jkcoxson（Coxson Engineering）的 LocalDevVPN 和 SideStore Team 的 StosVPN，遵循随包提供的 StosVPN License。[上游项目](https://github.com/jkcoxson/LocalDevVPN) · [许可全文](Vendor/LocalDevVPN/LocalDevVPN-LICENSE.txt)
 
 [MIT 许可](LICENSE)。原始项目：[ChrisMack32/Locus](https://github.com/ChrisMack32/Locus)，基线提交 `83c8fb324983728e8f44759cfd834dc637ee38b5`。依赖 [jkcoxson/idevice](https://github.com/jkcoxson/idevice)，许可见 [Vendor/idevice/LICENSE](Vendor/idevice/LICENSE)。

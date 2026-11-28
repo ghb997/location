@@ -67,6 +67,8 @@ let package = Package(
             ],
             resources: [.process("Resources/CoordinateData")]
         ),
-        .testTarget(name: "LocusCoreTests", dependencies: ["LocusCore"], path: "Tests/LocusCoreTests")
+        .testTarget(name: "LocusCoreTests", dependencies: ["LocusCore"], path: "Tests/LocusCoreTests"),
+        .target(name: "LocalTunnel", path: "TunnelProvider", exclude: ["Info.plist", "TunnelProvider.entitlements"]),
+        .testTarget(name: "VPNTests", dependencies: ["LocalTunnel"], path: "Tests/VPNTests")
     ]
 )

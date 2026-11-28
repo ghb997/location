@@ -77,11 +77,11 @@ enum ConnectionGuidePolicy {
     }
 
     private static let tunnelStep = Step(
-        titleKey: "Open your developer tunnel",
-        detailKey: "Keep the configured loopback tunnel running. A VPN interface alone does not confirm that the developer service is reachable.")
+        titleKey: "Connect the built-in VPN",
+        detailKey: "Open Settings → Tunnel and connect the built-in VPN. Then check that the developer service is reachable.")
     private static let endpointStep = Step(
         titleKey: "Check the connection settings",
-        detailKey: "Match the tunnel IP and port to your tunnel app. Use automatic discovery unless you know the service port.")
+        detailKey: "The built-in VPN uses the device tunnel IP in Settings. Leave service port discovery on unless you know the port.")
     private static let checkStep = Step(
         titleKey: "Check service reachability",
         detailKey: "Run a connection check. It probes the service without changing your location; starting simulation also requires developer-service access.")

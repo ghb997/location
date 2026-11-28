@@ -1,4 +1,4 @@
 "CFBundleDisplayName" = "location";
 "NSLocationWhenInUseUsageDescription" = "location uses your location to show your current position and return to it after simulation.";
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "location uses background location to keep the simulation connection alive. Background execution remains subject to iOS limits.";
-"NSLocalNetworkUsageDescription" = "location uses the local network to reach the LocalDevVPN developer tunnel and advertise pairing on supported systems.";
+"NSLocalNetworkUsageDescription" = "location uses the local network to reach this device’s developer service through the local VPN tunnel and to advertise pairing on supported systems.";

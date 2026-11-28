@@ -1,3 +1,4 @@
+import NetworkExtension
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -19,7 +20,7 @@ struct SettingsView: View {
     @State private var showPairOnDevice = false
     @State private var showNameEasterEgg = false
     @State private var tunnelIP = TunnelConfig.targetIP
-    @State private var localDevVPNInstalled = LocalDevVPN.isInstalled
+    @ObservedObject private var vpn = BuiltInVPN.shared
     @State private var tunnelInterfaceDetected = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -107,9 +108,29 @@ struct SettingsView: View {
                 .id(ConnectionGuidePolicy.SettingsSection.pairing)
 
                 Section {
+                    LabeledContent(L10n.tr("Built-in VPN"), value: vpn.statusTitle)
+                    Button {
+                        if vpn.canDisconnect {
+                            vpn.disconnect()
+                        } else if saveTunnelIP() {
+                            Task { await vpn.connect() }
+                        }
+                    } label: {
+                        Label(vpn.canDisconnect ? L10n.tr("Disconnect built-in VPN") : L10n.tr("Connect the built-in VPN"),
+                              systemImage: "power")
+                    }
+                    .disabled(vpn.isSaving || vpn.status == .disconnecting || diagnostics.state == .checking)
+                    if let message = vpn.errorMessage {
+                        Text(message).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    if vpn.isConnected && !vpn.matchesEndpoint {
+                        Text(L10n.tr("The VPN is connected, but the configured endpoint has no matching tunnel route."))
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     TextField(L10n.tr("Device tunnel IP"), text: $tunnelIP)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .disabled(vpn.isConnected || vpn.isTransitioning)
                         .onSubmit {
                             saveTunnelIP()
                         }
@@ -125,21 +146,15 @@ struct SettingsView: View {
                         saveTunnelIP()
                     }
                     Button {
-                        if localDevVPNInstalled {
-                            LocalDevVPN.openInstalled()
-                        } else {
-                            LocalDevVPN.openAppStore()
-                        }
+                        LocalDevVPN.openOrInstall()
                     } label: {
-                        Label(
-                            localDevVPNInstalled ? L10n.tr("Open LocalDevVPN") : L10n.tr("Get LocalDevVPN (App Store)"),
-                            systemImage: localDevVPNInstalled ? "lock.shield.fill" : "arrow.down.app.fill"
-                        )
+                        Label(L10n.tr("Use external LocalDevVPN"), systemImage: "arrow.up.forward.app")
                     }
+                    .disabled(vpn.isConnected || vpn.isTransitioning || diagnostics.state == .checking)
                 } header: {
                     Text(L10n.tr("Tunnel"))
                 } footer: {
-                    Text(L10n.tr("Use the device endpoint configured by your loopback VPN, usually 10.7.0.1. A detected VPN interface does not prove the developer service is reachable."))
+                    Text(L10n.tr("Disconnect the built-in VPN before changing its IP. Use Check service connection to verify the developer service. If your installation cannot run VPN extensions, use external LocalDevVPN."))
                 }
                 .disabled(!canEditConnection)
                 .id(ConnectionGuidePolicy.SettingsSection.tunnel)
@@ -225,6 +240,9 @@ struct SettingsView: View {
                     Text(L10n.tr("location is based on the open-source Locus project (MIT). Location injection uses the MIT-licensed idevice FFI."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    Link(L10n.tr("Built-in VPN code from LocalDevVPN by jkcoxson, based on StosVPN by the SideStore Team."),
+                         destination: URL(string: "https://github.com/jkcoxson/LocalDevVPN")!)
+                        .font(.footnote)
                 }
 
                 Section {
@@ -303,19 +321,15 @@ struct SettingsView: View {
             } message: {
                 Text(session.lastError ?? "")
             }
-            .onAppear {
-                localDevVPNInstalled = LocalDevVPN.isInstalled
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await vpn.refresh()
                 tunnelInterfaceDetected = LocalDevVPN.isConnected
             }
             .onDisappear {
                 if session.isRepairingRecovery { session.endRecoveryRepair() }
             }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
-                    localDevVPNInstalled = LocalDevVPN.isInstalled
-                    tunnelInterfaceDetected = LocalDevVPN.isConnected
-                }
-            }
+            .onChange(of: vpn.status) { _, _ in tunnelInterfaceDetected = LocalDevVPN.isConnected }
             .onChange(of: diagnostics.checkedAt) { _, _ in
                 tunnelInterfaceDetected = LocalDevVPN.isConnected
             }
@@ -349,6 +363,10 @@ struct SettingsView: View {
         }
         guard let target = TunnelConfig.normalizedTargetIP(tunnelIP) else {
             session.lastError = LocationEngineError.invalidIP.localizedDescription
+            return false
+        }
+        guard target == TunnelConfig.targetIP || (!vpn.isConnected && !vpn.isTransitioning) else {
+            session.lastError = L10n.tr("Disconnect the built-in VPN before changing its IP.")
             return false
         }
         if session.isRepairingRecovery,

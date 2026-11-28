@@ -2,17 +2,16 @@
 
 ## 1. 安装 IPA
 
-从[本仓库 Releases](https://github.com/ghb997/location/releases/latest) 下载对应版本的未签名 IPA。1.3.0（构建号 9，标签 `v1.3.0-zh.1`）的文件名为 `location-1.3.0-zh-Hans-unsigned.ipa`；如正式版本尚未发布，可查看[自动构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml)中的构建产物。
+在[内置版构建记录](https://github.com/ghb997/location/actions/workflows/build-ipa.yml?query=branch%3Acodex%2Fembedded-vpn)打开成功的运行，下载 IPA 构建产物并解压。文件名为 `location-1.4.0-zh-Hans-embedded-vpn-unsigned.ipa`，最低系统为 iOS 18.0。
 
-此包的 Bundle ID 为 `com.ghb997.location`，未包含个人签名证书，需用你已有的 SideStore、AltStore、Sideloadly、Feather 或其他可用签名工具重新签名，也可在兼容的 LiveContainer 环境中导入。侧载工具重新签名时可能调整标识，以实际安装包为准。
+使用同一开发者团队的证书和两个匹配的描述文件签名。给以下两个显式 App ID 都启用 **Network Extensions → Packet Tunnel**。
 
-最低系统 iOS 18.0。不同系统、签名和容器对后台运行及文件选择器的支持不同，构建成功不代表这些安装组合均经过验证。
+| 签名对象 | 默认 Bundle ID |
+| --- | --- |
+| 主 App `location.app` | `com.ghb997.location` |
+| 内置扩展 `PlugIns/TunnelProvider.appex` | `com.ghb997.location.TunnelProvider` |
 
-如使用 LiveContainer 无法导入配对文件：
-
-1. 长按 location → Settings，开启 **Fix File Picker**，再尝试导入。
-2. 或在文件共享菜单中选择 LiveContainer → location。
-3. 或复制 RPPairing 的 plist 全文，在 location 中选择“从剪贴板粘贴”。
+若改用自己的主 App 标识，扩展标识须同步改为“主 App 标识 + `.TunnelProvider`”。签名工具需保留扩展，为两者分别嵌入对应的描述文件，并在各自的签名权限中包含 `com.apple.developer.networking.networkextension` 的 `packet-tunnel-provider` 值。先签扩展、再签主 App，直接安装到已注册的测试设备。也可用 Xcode 选择开发者团队并自动签名。LiveContainer 无法注册客户 App 的 VPN 扩展。
 
 ## 2. 开启开发者模式并配对
 
@@ -39,11 +38,11 @@
 
 “设置 → 开发者配对”中的“通过静音播放保持配对运行”默认关闭。需要时可开启，仅在切换到系统设置进行配对期间播放静音；配对结束或取消后停止。取消或超时后，如果提示底层监听仍在结束中，需等监听返回后才能重试或修改定位。
 
-## 3. 连接 LocalDevVPN
+## 3. 连接内置 VPN
 
-从 [App Store](https://apps.apple.com/us/app/localdevvpn/id6755608044) 安装 LocalDevVPN，开启 VPN。本工具使用的是访问设备开发者服务的本机隧道。默认地址 `10.7.0.1`，除非你已修改隧道配置，否则保持默认即可。
+在首次引导或“设置 → 隧道”中连接内置 VPN。第一次添加配置时，在 iOS 系统弹窗中点“允许”。若先前用过独立的 LocalDevVPN，可先断开它，再连接内置 VPN。
 
-打开 location 的“设置 → 隧道”，在“设备隧道 IP”中填写隧道工具给出的目标地址。可以直接粘贴 `10.7.0.1/32`，保存后会显示 `10.7.0.1`。新版 LocalDevVPN 可能给本机接口分配 `10.7.1.1`，并通过这个接口访问目标 `10.7.0.1`，此时设备隧道 IP 仍应填 `10.7.0.1`。
+“设备隧道 IP”默认为 `10.7.0.1`，一般无需修改。更改后，重新连接内置 VPN 以使用新地址。
 
 默认启用“自动发现服务端口”。需要手动指定端口时，关闭此开关，输入隧道服务使用的端口（`1–65535`）并保存。
 
@@ -53,7 +52,7 @@
 
 ## 4. 开始、移动与停止
 
-1. 先连接 Wi-Fi，确认 LocalDevVPN 已开启。
+1. 先连接 Wi-Fi，在“设置 → 隧道”确认内置 VPN 已连接。
 2. 搜索地点、在地图上点击放置标记，或从“地点”选择收藏／最近记录。先查看“待应用位置”卡片，核对名称、可用地址、WGS-84 坐标和收藏状态。
 3. 点击“定位到选点”，等待状态变成“模拟定位中”。从地点列表选择记录只会返回地图预览，不会立即修改位置。
 4. 可选择步行／跑步／骑行／驾车速度并启用摇杆，或通过“路线”面板规划路线、使用手绘路径、导入 GPX。路线显示进度，可暂停和继续；断线后需检查连接，路线不会自动继续。
@@ -86,7 +85,7 @@ GPX 导入支持 XML 文件，最多 10 MB、50,000 个点，经纬度必须有�
 ## 常见问题
 
 - **提示配对文件无效**：重新使用 idevice_pair 的 RPPairing 模式生成，粘贴时包含完整 XML。修改后缀不能转换格式。
-- **无法打开开发者隧道**：检查开发者模式、Wi-Fi、本地网络权限、LocalDevVPN、隧道 IP 和服务端口，再运行“检测服务连接”。
+- **无法打开开发者隧道**：若 iOS 无法添加或启动 VPN，核对两份描述文件、签名权限和扩展标识。若 VPN 已连接，核对开发者模式、Wi-Fi、本地网络权限、配对文件与隧道地址，再运行“检测服务连接”。
 - **地图在动，其他应用不接受**：对方应用可能识别了模拟位置，此版本不处理这类应用内部校验。
 - **后台中断**：iOS 可能挂起应用；回到 location 检查连接后重试。
 - **仍显示英文**：在系统的应用语言设置中选择简体中文，并重新打开应用。系统生成的错误信息跟随系统语言。

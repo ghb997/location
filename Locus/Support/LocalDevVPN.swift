@@ -1,5 +1,7 @@
+import Combine
 import Darwin
 import Foundation
+import NetworkExtension
 import UIKit
 
 enum LocalDevVPN {
@@ -102,5 +104,152 @@ enum LocalDevVPN {
             ptr = interface.ifa_next
         }
         return results
+    }
+}
+
+/// Only manages this app's own configuration. Other tunnel apps remain usable
+/// with the existing endpoint discovery and service diagnostics.
+@MainActor
+final class BuiltInVPN: ObservableObject {
+    static let shared = BuiltInVPN()
+
+    @Published private(set) var status: NEVPNStatus = .invalid
+    @Published private(set) var isSaving = false
+    @Published private(set) var errorMessage: String?
+    private var manager: NETunnelProviderManager?
+    private var statusObserver: AnyCancellable?
+    private var configurationObserver: AnyCancellable?
+    private var revision = 0
+    private var expectsConnection = false
+
+    private init() {
+        configurationObserver = NotificationCenter.default.publisher(for: .NEVPNConfigurationChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in Task { await self?.refresh() } }
+    }
+
+    private var providerID: String? {
+        Bundle.main.bundleIdentifier.map { $0 + ".TunnelProvider" }
+    }
+
+    private var configuredPeer: String? {
+        (manager?.protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration?["targetIP"] as? String
+    }
+
+    var isConnected: Bool { status == .connected }
+    var canDisconnect: Bool { [.connected, .connecting, .reasserting].contains(status) }
+
+    var isTransitioning: Bool {
+        isSaving || [.connecting, .reasserting, .disconnecting].contains(status)
+    }
+
+    var matchesEndpoint: Bool {
+        isConnected && configuredPeer == TunnelConfig.targetIP && LocalDevVPN.isConnected
+    }
+
+    var statusTitle: String {
+        if isSaving { return L10n.tr("Configuring VPN…") }
+        switch status {
+        case .connected: return L10n.tr("Connected")
+        case .connecting, .reasserting: return L10n.tr("Connecting…")
+        case .disconnecting: return L10n.tr("Disconnecting…")
+        default: return L10n.tr("Disconnected")
+        }
+    }
+
+    private func storedManager(for id: String) async throws -> NETunnelProviderManager? {
+        let managers = try await NETunnelProviderManager.loadAllFromPreferences()
+        return managers.first { ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == id }
+    }
+
+    func refresh() async {
+        guard !isSaving, let providerID else { return }
+        revision += 1
+        let current = revision
+        do {
+            let stored = try await storedManager(for: providerID)
+            guard current == revision else { return }
+            observe(stored)
+        } catch {
+            guard current == revision else { return }
+            observe(nil)
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func connect() async {
+        guard !isTransitioning, !isConnected, let providerID else { return }
+        revision += 1
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+        do {
+            let peer = TunnelConfig.targetIP
+            guard TunnelConfig.isValidIP(peer) else { throw LocationEngineError.invalidIP }
+            let stored = try await storedManager(for: providerID)
+            let vpn = stored ?? NETunnelProviderManager()
+            observe(vpn)
+            // iOS Settings can start or stop a tunnel while this screen is open.
+            guard [.disconnected, .invalid].contains(status) else { return }
+            if stored == nil || configuredPeer != peer || !vpn.isEnabled {
+                let settings = NETunnelProviderProtocol()
+                settings.providerBundleIdentifier = providerID
+                settings.serverAddress = peer
+                settings.providerConfiguration = ["targetIP": peer]
+                vpn.localizedDescription = L10n.tr("location developer tunnel")
+                vpn.protocolConfiguration = settings
+                vpn.isEnabled = true
+                // The system presents its VPN consent sheet on the first save.
+                try await vpn.saveToPreferences()
+                try await vpn.loadFromPreferences()
+            }
+            observe(vpn)
+            guard [.disconnected, .invalid].contains(status) else { return }
+            try vpn.connection.startVPNTunnel()
+            expectsConnection = true
+            // startVPNTunnel can return before the session posts .connecting.
+            // The real status notification supplies the final result.
+            status = .connecting
+        } catch {
+            expectsConnection = false
+            status = manager?.connection.status ?? .invalid
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func disconnect() {
+        guard !isSaving, let manager, canDisconnect else { return }
+        revision += 1
+        expectsConnection = false
+        errorMessage = nil
+        manager.connection.stopVPNTunnel()
+        status = .disconnecting
+    }
+
+    private func observe(_ vpn: NETunnelProviderManager?) {
+        manager = vpn
+        statusObserver = nil
+        guard let connection = vpn?.connection else {
+            updateStatus(.invalid)
+            return
+        }
+        updateStatus(connection.status)
+        statusObserver = NotificationCenter.default.publisher(for: .NEVPNStatusDidChange, object: connection)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak connection] _ in
+                guard let connection else { return }
+                self?.updateStatus(connection.status)
+            }
+    }
+
+    private func updateStatus(_ newStatus: NEVPNStatus) {
+        if expectsConnection && (newStatus == .disconnected || newStatus == .invalid) {
+            errorMessage = L10n.tr("The built-in VPN could not connect. Check VPN permissions or use an external tunnel.")
+            expectsConnection = false
+        } else if newStatus == .connected {
+            expectsConnection = false
+            errorMessage = nil
+        }
+        status = newStatus
     }
 }

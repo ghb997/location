@@ -143,7 +143,7 @@ final class PairOnDeviceService: ObservableObject {
             do {
                 try pairingStore.installCompletedPairing(from: context.temporaryURL)
                 phase = .succeeded
-                Self.postNotification(title: L10n.tr("Locus paired"), body: L10n.tr("RPPairing is ready. Connect LocalDevVPN, then teleport."))
+                Self.postNotification(title: L10n.tr("Locus paired"), body: L10n.tr("RPPairing is ready. Connect the built-in VPN to start."))
             } catch {
                 phase = .failed(L10n.tr("Paired, but the pairing file could not be validated or saved. Your previous pairing is unchanged."))
             }

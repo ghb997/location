@@ -192,8 +192,8 @@ struct PairOnDeviceView: View {
                 Text(L10n.tr("Paired"))
                     .font(.title3.weight(.bold))
                 Text(mode == .embedded
-                     ? L10n.tr("Next we’ll set up LocalDevVPN.")
-                     : L10n.tr("RPPairing file saved. Connect LocalDevVPN, then teleport."))
+                     ? L10n.tr("Next, connect the built-in VPN.")
+                     : L10n.tr("RPPairing is ready. Connect the built-in VPN to start."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

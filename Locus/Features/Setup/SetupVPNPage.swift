@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct SetupVPNPage: View {
-    let localDevVPNInstalled: Bool
     let onFinished: () -> Void
+    @ObservedObject private var vpn = BuiltInVPN.shared
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var tunnelInterfaceDetected = false
 
     var body: some View {
         SetupPageScroll {
@@ -17,14 +19,12 @@ struct SetupVPNPage: View {
                             .accessibilityHidden(true)
 
                         VStack(spacing: 10) {
-                            Text(localDevVPNInstalled ? L10n.tr("Connect LocalDevVPN") : L10n.tr("One more app"))
+                            Text(L10n.tr("Connect the built-in VPN"))
                                 .font(.title.weight(.bold))
                                 .multilineTextAlignment(.center)
                                 .accessibilityAddTraits(.isHeader)
 
-                            Text(localDevVPNInstalled
-                                 ? L10n.tr("LocalDevVPN is installed. Open it to turn on the private tunnel location needs, then come back here.")
-                                 : L10n.tr("LocalDevVPN creates a private tunnel location uses to talk to your phone’s location system. Install it, turn it on, then you’re ready to teleport."))
+                            Text(L10n.tr("The tunnel connects location to developer services on this device. The first time you connect, tap Allow when iOS asks to add a VPN configuration."))
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -32,13 +32,7 @@ struct SetupVPNPage: View {
                         }
 
                         VStack(alignment: .leading, spacing: 12) {
-                            if localDevVPNInstalled {
-                                SetupTipRow(systemImage: "checkmark.circle.fill", title: L10n.tr("Installed"), detail: L10n.tr("LocalDevVPN is on this iPhone."))
-                                SetupTipRow(systemImage: "power.circle.fill", title: L10n.tr("Connect"), detail: L10n.tr("Tap below to open it and start the tunnel. You’ll return to location."))
-                            } else {
-                                SetupTipRow(systemImage: "arrow.down.app.fill", title: L10n.tr("Install"), detail: L10n.tr("Get LocalDevVPN from the App Store."))
-                                SetupTipRow(systemImage: "power.circle.fill", title: L10n.tr("Connect"), detail: L10n.tr("Open it and turn the VPN on. Leave the default IP alone."))
-                            }
+                            SetupTipRow(systemImage: "lock.shield", title: L10n.tr("Built-in VPN"), detail: vpn.statusTitle)
                             SetupTipRow(systemImage: "wifi", title: L10n.tr("First teleport on Wi‑Fi"), detail: L10n.tr("Start your first teleport while on Wi‑Fi. After that, it can keep working on cellular."))
                         }
                         .padding(18)
@@ -49,28 +43,26 @@ struct SetupVPNPage: View {
                     Spacer(minLength: 28)
 
                     VStack(spacing: 12) {
-                        Button {
-                            if localDevVPNInstalled {
-                                LocalDevVPN.openInstalled()
-                            } else {
-                                LocalDevVPN.openAppStore()
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: localDevVPNInstalled ? "lock.shield.fill" : "apple.logo")
-                                Text(localDevVPNInstalled ? L10n.tr("Open LocalDevVPN") : L10n.tr("Get LocalDevVPN"))
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .foregroundStyle(.primary)
-                            .locusGlass(.interactive, in: Capsule())
-                            .contentShape(Capsule())
+                        if let message = vpn.errorMessage {
+                            Text(message).font(.footnote).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
-                        .buttonStyle(.plain)
-
-                        SetupPrimaryButton(title: L10n.tr("I’ve connected it — continue")) {
-                            onFinished()
+                        if vpn.matchesEndpoint {
+                            SetupPrimaryButton(title: L10n.tr("Continue to map"), action: onFinished)
+                        } else if vpn.isConnected {
+                            Text(L10n.tr("The VPN is connected, but the configured endpoint has no matching tunnel route."))
+                                .font(.footnote).foregroundStyle(.secondary)
+                            Button(L10n.tr("Disconnect built-in VPN")) { vpn.disconnect() }
+                            Button(L10n.tr("Set up later"), action: onFinished)
+                        } else {
+                            SetupPrimaryButton(title: vpn.isTransitioning ? vpn.statusTitle : L10n.tr("Connect the built-in VPN")) {
+                                Task { await vpn.connect() }
+                            }
+                            .disabled(vpn.isTransitioning)
+                            Button(tunnelInterfaceDetected ? L10n.tr("Continue with existing tunnel") : L10n.tr("Set up later"), action: onFinished)
+                        }
+                        if vpn.errorMessage != nil {
+                            Button(L10n.tr("Use external LocalDevVPN")) { LocalDevVPN.openOrInstall() }
                         }
                     }
                     .padding(.horizontal, 24)
@@ -78,5 +70,11 @@ struct SetupVPNPage: View {
                 }
             }
         }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            await vpn.refresh()
+            tunnelInterfaceDetected = LocalDevVPN.isConnected
+        }
+        .onChange(of: vpn.status) { _, _ in tunnelInterfaceDetected = LocalDevVPN.isConnected }
     }
 }

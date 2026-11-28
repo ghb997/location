@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// First-run walkthrough: welcome → pairing → LocalDevVPN → map.
+/// First-run walkthrough: welcome → pairing → developer tunnel → map.
 /// Skipped when `SetupGate.isComplete` (see `LocusApp`).
 struct SetupFlowView: View {
     @EnvironmentObject private var pairing: PairingStore
@@ -12,8 +12,6 @@ struct SetupFlowView: View {
     @State private var step: Step
     @State private var appear = false
     @State private var showImporter = false
-    @State private var localDevVPNInstalled = LocalDevVPN.isInstalled
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum Step: Int, CaseIterable {
@@ -55,7 +53,7 @@ struct SetupFlowView: View {
                             SetupPageScroll { pairingPage }
                         }
                     case .vpn:
-                        SetupVPNPage(localDevVPNInstalled: localDevVPNInstalled, onFinished: onFinished)
+                        SetupVPNPage(onFinished: onFinished)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -73,17 +71,6 @@ struct SetupFlowView: View {
         .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.86), value: step)
         .onAppear {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { appear = true }
-            localDevVPNInstalled = LocalDevVPN.isInstalled
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                localDevVPNInstalled = LocalDevVPN.isInstalled
-            }
-        }
-        .onChange(of: step) { _, newStep in
-            if newStep == .vpn {
-                localDevVPNInstalled = LocalDevVPN.isInstalled
-            }
         }
         .onChange(of: pairing.hasPairingFile) { _, hasFile in
             if hasFile, step == .welcome || step == .pairing {
@@ -202,7 +189,7 @@ enum SetupGate {
         UserDefaults.standard.set(false, forKey: inProgressKey)
     }
 
-    /// Already paired *during* this walkthrough → LocalDevVPN page.
+    /// Already paired *during* this walkthrough → developer tunnel page.
     /// Fresh install → welcome. Already-paired upgrades are handled in `LocusApp`.
     static func initialStep(hasPairingFile: Bool) -> SetupFlowView.Step {
         if hasPairingFile, isInProgress { return .vpn }

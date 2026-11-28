@@ -8,6 +8,11 @@ on:
       - 'Locus.xcodeproj/**'
   pull_request:
   workflow_dispatch:
+    inputs:
+      hosted_compat:
+        description: Build with Xcode 26 on a GitHub-hosted Mac
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,12 +23,22 @@ concurrency:
 
 jobs:
   build:
-    runs-on: xcode-27
+    runs-on: ${{ (inputs.hosted_compat || github.ref_name == 'codex/embedded-vpn' || github.head_ref == 'codex/embedded-vpn') && 'macos-15' || 'xcode-27' }}
     timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      DEVICE_SDK: iphoneos27.2
+      MIN_SDK: '27.2'
     steps:
       - uses: actions/checkout@v4
+      - name: Select hosted Xcode 26
+        if: inputs.hosted_compat || github.ref_name == 'codex/embedded-vpn' || github.head_ref == 'codex/embedded-vpn'
+        run: |
+          xcode_app=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort -V | tail -n 1)
+          test -n "$xcode_app"
+          echo "DEVELOPER_DIR=$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
+          echo "DEVICE_SDK=iphoneos" >> "$GITHUB_ENV"
+          echo "MIN_SDK=26.0" >> "$GITHUB_ENV"
       - name: Show release toolchain
         run: |
           xcodebuild -version
@@ -42,19 +57,19 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project Locus.xcodeproj -scheme Locus -configuration Release \
-            -sdk iphoneos27.2 -destination 'generic/platform=iOS' \
+            -sdk "$DEVICE_SDK" -destination 'generic/platform=iOS' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build 2>&1 | tee build.log
       - name: Package and verify IPA
         run: |
           python3 scripts/package_ipa.py build/Build/Products/Release-iphoneos/location.app outputs
-          python3 scripts/verify_ipa.py outputs/*.ipa --min-sdk 27.2
+          python3 scripts/verify_ipa.py outputs/*-embedded-vpn-unsigned.ipa --min-sdk "$MIN_SDK"
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: location-zh-Hans-IPA
+          name: location-zh-Hans-embedded-vpn-IPA
           path: |
-            outputs/*.ipa
+            outputs/*-embedded-vpn-unsigned.ipa
             outputs/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30

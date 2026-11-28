@@ -1,0 +1,11 @@
+The Locus local tunnel uses code from LocalDevVPN by jkcoxson and contributors,
+based on StosVPN by Stossy11 and the SideStore Team.
+
+Copyright (c) 2025 SideStore Team.
+LocalDevVPN source: https://github.com/jkcoxson/LocalDevVPN/tree/17740a2dfb11cd19a55575aff9aecc74213a3b10
+StosVPN source: https://github.com/SideStore/StosVPN
+License: see LocalDevVPN-LICENSE.txt.
+
+The embedded extension adapts TunnelProv/PacketTunnelProvider.swift for a
+single peer address configured by Locus. It uses LocalDevVPN's on-device
+IPv4 reflection and does not require an external tunnel server.
